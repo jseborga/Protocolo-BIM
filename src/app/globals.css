@@ -1,0 +1,190 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+  --color-ink-950: #020617;
+
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-900: #1e3a8a;
+}
+
+:root {
+  color-scheme: light;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --surface-sunken: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --surface: #0f172a;
+    --surface-muted: #0b1220;
+    --surface-sunken: #172033;
+    --border: #1e293b;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+  }
+}
+
+body {
+  background: var(--surface-muted);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * In Tailwind v4 `@apply` only accepts real utilities, so the shared button
+ * base is declared with `@utility` and the variants build on top of it.
+ */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
+    transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+  }
+
+  .muted {
+    color: var(--text-muted);
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  }
+
+  .btn-secondary {
+    @apply btn border text-[color:var(--text)] hover:bg-[color:var(--surface-sunken)];
+    border-color: var(--border);
+    background: var(--surface);
+  }
+
+  .btn-ghost {
+    @apply btn hover:bg-[color:var(--surface-sunken)];
+    color: var(--text-muted);
+  }
+
+  .btn-danger {
+    @apply btn border border-red-300 text-red-700 hover:bg-red-50
+      dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950;
+  }
+
+  .field {
+    @apply w-full rounded-lg border px-3 py-2 text-sm outline-none
+      focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide;
+    color: var(--text-muted);
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+
+  .table {
+    @apply w-full text-left text-sm;
+  }
+
+  .table th {
+    @apply px-3 py-2 text-xs font-semibold uppercase tracking-wide;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .table td {
+    @apply px-3 py-2 align-top;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .prose-protocol {
+    @apply text-sm leading-relaxed;
+  }
+
+  .prose-protocol h1,
+  .prose-protocol h2,
+  .prose-protocol h3 {
+    @apply mt-5 mb-2 font-semibold;
+    color: var(--text);
+  }
+
+  .prose-protocol h1 {
+    @apply text-lg;
+  }
+  .prose-protocol h2 {
+    @apply text-base;
+  }
+  .prose-protocol h3 {
+    @apply text-sm;
+  }
+
+  .prose-protocol p {
+    @apply mb-3;
+  }
+
+  .prose-protocol ul,
+  .prose-protocol ol {
+    @apply mb-3 ml-5 list-outside space-y-1;
+  }
+
+  .prose-protocol ul {
+    @apply list-disc;
+  }
+  .prose-protocol ol {
+    @apply list-decimal;
+  }
+
+  .prose-protocol table {
+    @apply mb-3 w-full border-collapse text-xs;
+  }
+
+  .prose-protocol th,
+  .prose-protocol td {
+    @apply px-2 py-1.5 text-left;
+    border: 1px solid var(--border);
+  }
+
+  .prose-protocol th {
+    background: var(--surface-sunken);
+    @apply font-semibold;
+  }
+
+  .prose-protocol code {
+    @apply rounded px-1 py-0.5 font-mono text-xs;
+    background: var(--surface-sunken);
+  }
+
+  .prose-protocol a {
+    @apply text-brand-600 underline underline-offset-2;
+  }
+}
