@@ -5,6 +5,7 @@ export type { ProtocolDiff, SectionDiff, DiffLine, SectionSnapshot } from './dif
 export { computeCompleteness } from './completeness'
 export type { CompletenessResult } from './completeness'
 export { provisionProject, originatorCode } from './provision'
+export { renderGeneratedSection } from './generated'
 export {
   CODE_TABLE_SEEDS,
   DISCIPLINE_SEED,

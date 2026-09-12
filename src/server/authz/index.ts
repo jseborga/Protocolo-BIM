@@ -31,17 +31,17 @@ export interface ProjectAccess {
 }
 
 /**
- * Resolve the current user's access to a project.
+ * Resolve the current user's access to a project, or null when there is none.
  *
- * A missing project and a forbidden one both surface as "not found", so the app
- * never confirms the existence of another organisation's project.
+ * Route handlers use this to answer with a status code; pages use
+ * `requireProjectAccess`, which turns the same "no access" into a 404.
  */
-export async function requireProjectAccess(projectId: string): Promise<ProjectAccess> {
+export async function resolveProjectAccess(projectId: string): Promise<ProjectAccess | null> {
   const user = await getCurrentUser()
-  if (!user) notFound()
+  if (!user) return null
 
   const project = await loadProject(projectId)
-  if (!project) notFound()
+  if (!project) return null
 
   const membership = user.memberships.find((entry) => entry.orgId === project.orgId) ?? null
   const projectMember = await prisma.projectMember.findUnique({
@@ -53,7 +53,7 @@ export async function requireProjectAccess(projectId: string): Promise<ProjectAc
     projectRole: projectMember?.role ?? null,
   }
 
-  if (!canAccessProject(context)) notFound()
+  if (!canAccessProject(context)) return null
 
   const abilities = abilitiesFor(context)
   return {
@@ -66,4 +66,15 @@ export async function requireProjectAccess(projectId: string): Promise<ProjectAc
       if (!abilities.has(ability)) throw new ForbiddenError(ability)
     },
   }
+}
+
+/**
+ * Page-level guard. A missing project and a forbidden one both surface as
+ * "not found", so the app never confirms the existence of another
+ * organisation's project.
+ */
+export async function requireProjectAccess(projectId: string): Promise<ProjectAccess> {
+  const access = await resolveProjectAccess(projectId)
+  if (!access) notFound()
+  return access
 }
