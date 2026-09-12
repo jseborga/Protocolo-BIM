@@ -90,15 +90,67 @@ test.describe('protocol editor', () => {
     await page.goto(`/es/p/${projectId}/protocol`)
 
     await page.getByRole('button', { name: 'Enviar a revisión' }).click()
-    await expect(page.getByText(/Faltan secciones obligatorias/)).toBeVisible()
+    const warning = page.getByText(/Faltan secciones obligatorias/)
+    await expect(warning).toBeVisible()
+
+    // Generated sections render from live data, so they can never be written
+    // and must never be listed as blocking.
+    await expect(warning).not.toContainText('Información del proyecto y del cliente')
+    await expect(warning).not.toContainText('Organización, roles y responsabilidades')
   })
 
-  test('lists versions', async ({ page }) => {
+  test('reaches approval once every writable required section has content', async ({ page }) => {
+    const projectId = await openDemoProject(page)
+
+    // The dashboard lists exactly what the review gate is waiting for, keyed by
+    // section, so there is no prose to parse here.
+    const pending = await page
+      .locator(`a[href*="/protocol?section="]`)
+      .evaluateAll((links) =>
+        links.map((link) => new URL((link as HTMLAnchorElement).href).searchParams.get('section')!),
+      )
+    expect(pending.length).toBeGreaterThan(0)
+
+    for (const key of pending) {
+      await page.goto(`/es/p/${projectId}/protocol?section=${key}`)
+      await page.locator('#section-body').fill(`Contenido acordado para la sección ${key}.`)
+      await page.getByRole('button', { name: /^Guardar$/ }).click()
+      await expect(page.getByText('Guardado')).toBeVisible()
+    }
+
+    await page.goto(`/es/p/${projectId}`)
+    await expect(page.getByText('Todas las secciones obligatorias están redactadas.')).toBeVisible()
+
+    await page.goto(`/es/p/${projectId}/protocol`)
+    await page.getByRole('button', { name: 'Enviar a revisión' }).click()
+    await expect(page.getByText('En revisión')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Aprobar' }).click()
+    await expect(page.getByText(/Aprobado por Ana Ribeiro/)).toBeVisible()
+
+    // An approved version is a record: it is not edited in place.
+    await page.goto(`/es/p/${projectId}/protocol?section=DEFINITIONS`)
+    await expect(page.getByText(/no se edita: crea una versión nueva/)).toBeVisible()
+
+    // A new version branches from it and leaves the approved one superseded.
+    await page.goto(`/es/p/${projectId}/protocol`)
+    await page.getByRole('button', { name: 'Nueva versión' }).click()
+    await expect(page.getByText('Versión 1.1')).toBeVisible()
+
+    await page.goto(`/es/p/${projectId}/protocol/versions`)
+    await expect(page.getByText('Sustituido')).toBeVisible()
+  })
+
+  test('lists versions and diffs the new one against its predecessor', async ({ page }) => {
     const projectId = await openDemoProject(page)
     await page.goto(`/es/p/${projectId}/protocol/versions`)
 
     await expect(page.getByRole('heading', { name: 'Versiones' })).toBeVisible()
-    await expect(page.getByText('1.0')).toBeVisible()
+    await expect(page.getByRole('cell', { name: '1.0', exact: true })).toBeVisible()
+    await expect(page.getByRole('cell', { name: '1.1', exact: true })).toBeVisible()
+
+    // The newest version opens compared against the one it superseded.
+    await expect(page.getByRole('heading', { name: '1.0 → 1.1' })).toBeVisible()
   })
 })
 

@@ -293,7 +293,9 @@
     "exportCsv": "Exportar CSV",
     "segment": "Segmento {n}",
     "compileError": "A convenção não pode ser compilada: {message}",
-    "keyTaken": "Já existe uma convenção com essa chave"
+    "keyTaken": "Já existe uma convenção com essa chave",
+    "segmentValue": "Valor",
+    "segmentIssue": "Problema"
   },
   "namingTarget": {
     "FILE": "Ficheiro",

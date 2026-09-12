@@ -128,6 +128,48 @@ describe('computeCompleteness', () => {
     expect(result.translation.some((entry) => entry.locale === 'ES')).toBe(false)
   })
 
+  it('never counts generated sections as work to write', () => {
+    const withGenerated = [
+      ...sections,
+      {
+        key: 'TEAM',
+        isRequired: true,
+        isGenerated: true,
+        title: 'Equipo',
+        contents: [],
+      },
+    ]
+
+    const result = computeCompleteness(withGenerated, 'ES', ['ES', 'EN'])
+
+    // Same numbers as without the generated section: it adds no authoring work.
+    expect(result.requiredTotal).toBe(3)
+    expect(result.requiredDone).toBe(2)
+    expect(result.missing.map((entry) => entry.key)).not.toContain('TEAM')
+  })
+
+  it('never counts generated sections as work to translate', () => {
+    const withGenerated = [
+      ...sections,
+      { key: 'TEAM', isRequired: true, isGenerated: true, title: 'Equipo', contents: [] },
+    ]
+
+    const english = computeCompleteness(withGenerated, 'ES', ['ES', 'EN']).translation.find(
+      (entry) => entry.locale === 'EN',
+    )!
+    expect(english.total).toBe(2)
+  })
+
+  it('reports a protocol of only generated sections as complete', () => {
+    const result = computeCompleteness(
+      [{ key: 'TEAM', isRequired: true, isGenerated: true, title: 'Equipo', contents: [] }],
+      'ES',
+      ['ES'],
+    )
+    expect(result.percent).toBe(100)
+    expect(result.missing).toEqual([])
+  })
+
   it('reports an empty protocol as zero per cent', () => {
     expect(computeCompleteness([], 'ES', ['ES']).percent).toBe(100)
     expect(

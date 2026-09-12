@@ -4,6 +4,12 @@ export interface SectionCompletenessInput {
   key: string
   isRequired: boolean
   title: string
+  /**
+   * Rendered from live project data rather than written. Generated sections are
+   * excluded from both gauges: there is no prose to write and nothing to
+   * translate, so counting them would misreport the work left to do.
+   */
+  isGenerated?: boolean
   contents: Array<{ locale: Locale; body: string }>
 }
 
@@ -31,10 +37,12 @@ export function computeCompleteness(
   baseLocale: Locale,
   enabledLocales: Locale[],
 ): CompletenessResult {
-  const required = sections.filter((section) => section.isRequired)
+  const authored = sections.filter((section) => !section.isGenerated)
+
+  const required = authored.filter((section) => section.isRequired)
   const done = required.filter((section) => hasBody(section.contents, baseLocale))
 
-  const written = sections.filter((section) => hasBody(section.contents, baseLocale))
+  const written = authored.filter((section) => hasBody(section.contents, baseLocale))
   const translation = enabledLocales
     .filter((locale) => locale !== baseLocale)
     .map((locale) => {

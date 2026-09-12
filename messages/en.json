@@ -293,7 +293,9 @@
     "exportCsv": "Export CSV",
     "segment": "Segment {n}",
     "compileError": "The convention cannot be compiled: {message}",
-    "keyTaken": "A convention with that key already exists"
+    "keyTaken": "A convention with that key already exists",
+    "segmentValue": "Value",
+    "segmentIssue": "Issue"
   },
   "namingTarget": {
     "FILE": "File",

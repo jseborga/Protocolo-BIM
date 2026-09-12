@@ -39,6 +39,7 @@ export default async function ProjectDashboard({
   const sections = (protocol?.sections ?? []).map((section) => ({
     key: section.key,
     isRequired: section.isRequired,
+    isGenerated: section.kind === 'GENERATED',
     title:
       section.contents.find((content) => content.locale === project.baseLocale)?.title ?? section.key,
     contents: section.contents.map((content) => ({ locale: content.locale, body: content.body })),

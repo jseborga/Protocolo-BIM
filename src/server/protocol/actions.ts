@@ -168,7 +168,14 @@ export async function changeStatusAction(
 
   if (target === 'IN_REVIEW' || target === 'APPROVED') {
     const missing = protocol.sections
-      .filter((section) => section.isRequired && REQUIRED_SECTION_KEYS.includes(section.key))
+      .filter(
+        (section) =>
+          section.isRequired &&
+          // Generated sections render from live project data: there is nothing
+          // to write, so they must never hold a version back.
+          section.kind !== 'GENERATED' &&
+          REQUIRED_SECTION_KEYS.includes(section.key),
+      )
       .filter((section) => {
         const content = section.contents.find((entry) => entry.locale === access.project.baseLocale)
         return (content?.body ?? '').trim() === ''

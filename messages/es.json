@@ -293,7 +293,9 @@
     "exportCsv": "Exportar CSV",
     "segment": "Segmento {n}",
     "compileError": "La convención no se puede compilar: {message}",
-    "keyTaken": "Ya existe una convención con esa clave"
+    "keyTaken": "Ya existe una convención con esa clave",
+    "segmentValue": "Valor",
+    "segmentIssue": "Problema"
   },
   "namingTarget": {
     "FILE": "Archivo",

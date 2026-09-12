@@ -74,8 +74,8 @@ export function NamingValidator({
                   <tr>
                     <th className="w-10" />
                     <th>{t('fieldKey')}</th>
-                    <th>{t('generated')}</th>
-                    <th>{t('invalid')}</th>
+                    <th>{t('segmentValue')}</th>
+                    <th>{t('segmentIssue')}</th>
                   </tr>
                 </thead>
                 <tbody>

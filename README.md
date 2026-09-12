@@ -69,7 +69,8 @@ The seed creates a demo organisation with a fully populated project
 - **Three languages, properly.** Not just the interface: the protocol content
   is stored per language, falls back to the project's base language when a
   section is not translated yet, and the dashboard reports translation
-  coverage per language.
+  coverage per language. Generated sections count towards neither gauge —
+  there is no prose to write and nothing to translate.
 
 Phase 2 and 3 surfaces (CDE folders, shared parameters, LOIN, TIDP/MIDP,
 model audits) already exist in the data model and are marked in the interface;
@@ -142,14 +143,18 @@ PDF and the DOCX all receive them through the same path as authored prose.
 ## Testing
 
 ```bash
-npm run test           # 66 unit tests: naming engine, diff, permissions, markdown, i18n parity
-npm run test:e2e       # 17 end-to-end tests through a real browser and a real database
+npm run test           # 69 unit tests: naming engine, diff, permissions, markdown, i18n parity
+npm run test:e2e       # 18 end-to-end tests through a real browser and a real database
 npm run typecheck
 npm run verify:naming  # every stored convention still agrees with its own test cases
 ```
 
-`npm run test:e2e` builds the app and starts it on port 3100 by default. Point
-it at a running instance instead with `E2E_BASE_URL=http://127.0.0.1:3100`.
+`npm run test:e2e` resets the demo organisation, re-seeds it and builds the app
+on port 3100. The reset is what makes the suite repeatable: the tests approve a
+protocol and branch a new version, so they need a known starting point. Point
+the run at an already-running instance with
+`E2E_BASE_URL=http://127.0.0.1:3100`, and reset the demo data on its own with
+`npm run db:reset:demo`.
 
 The i18n test fails the build if any language loses a key, gains one, or drifts
 on ICU placeholders — which is the only practical way to keep three languages
