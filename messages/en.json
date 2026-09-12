@@ -234,7 +234,9 @@
     "coverStandard": "Standard",
     "coverStatus": "Status",
     "coverDate": "Date",
-    "tableOfContents": "Table of contents"
+    "tableOfContents": "Table of contents",
+    "tableField": "Item",
+    "tableValue": "Value"
   },
   "protocolStatus": {
     "DRAFT": "Draft",

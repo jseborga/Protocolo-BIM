@@ -234,7 +234,9 @@
     "coverStandard": "Estándar",
     "coverStatus": "Estado",
     "coverDate": "Fecha",
-    "tableOfContents": "Índice"
+    "tableOfContents": "Índice",
+    "tableField": "Concepto",
+    "tableValue": "Valor"
   },
   "protocolStatus": {
     "DRAFT": "Borrador",

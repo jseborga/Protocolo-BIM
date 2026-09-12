@@ -11,6 +11,9 @@ import { renderExportHtml } from './html'
  */
 export async function renderPdf(document: ExportDocument): Promise<Buffer> {
   const browser = await chromium.launch({
+    // Set CHROMIUM_EXECUTABLE_PATH when the host already ships a Chromium
+    // (containers, CI images) instead of the one Playwright downloads.
+    executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined,
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   })
   try {

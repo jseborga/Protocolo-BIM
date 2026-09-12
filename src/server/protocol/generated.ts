@@ -76,7 +76,7 @@ async function renderProjectInfo(projectId: string, locale: 'es' | 'en' | 'pt'):
     )
   }
 
-  return table([t('coverProject'), '—'], rows)
+  return table([t('tableField'), t('tableValue')], rows)
 }
 
 async function renderTeam(projectId: string, locale: 'es' | 'en' | 'pt'): Promise<string> {

@@ -14,7 +14,15 @@ export default defineConfig({
     trace: 'retain-on-failure',
     locale: 'es-ES',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined },
+      },
+    },
+  ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
