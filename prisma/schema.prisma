@@ -1,0 +1,857 @@
+// Protocolo BIM — data model
+// ---------------------------------------------------------------------------
+// The whole point of this schema: a BIM protocol is DATA, not prose. What the
+// team writes in the protocol editor (naming conventions, parameters, LOIN) is
+// compiled into a RuleSet that the Revit add-in and the IFC auditor consume to
+// check real models. Sections keep prose per locale on top of that data.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Locale {
+  ES
+  EN
+  PT
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+/// ISO 19650 project-level responsibilities, independent from app permissions.
+enum ProjectRole {
+  INFORMATION_MANAGER
+  BIM_MANAGER
+  BIM_COORDINATOR
+  BIM_MODELLER
+  REVIEWER
+  CLIENT
+  VIEWER
+}
+
+/// ISO 19650-2 appointment chain.
+enum PartyType {
+  APPOINTING
+  LEAD_APPOINTED
+  APPOINTED
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  CLOSED
+}
+
+enum ProtocolStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SUPERSEDED
+}
+
+enum SectionKind {
+  RICH_TEXT
+  TABLE
+  MATRIX
+  GENERATED
+}
+
+/// What a naming convention applies to.
+enum NamingTarget {
+  FILE
+  MODEL
+  SHEET
+  VIEW
+  FOLDER
+  FAMILY
+  TYPE
+  PARAMETER
+  WORKSET
+  LEVEL
+  GRID
+}
+
+enum FieldSource {
+  CODE_TABLE
+  FREE_TEXT
+  NUMERIC
+  DATE
+  REGEX
+}
+
+enum CaseRule {
+  ANY
+  UPPER
+  LOWER
+}
+
+/// ISO 19650-2 common data environment states.
+enum CdeState {
+  WIP
+  SHARED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RaciLetter {
+  R
+  A
+  C
+  I
+}
+
+enum AuditSource {
+  REVIT_ADDIN
+  IFC
+  CSV
+  MANUAL
+}
+
+enum Severity {
+  ERROR
+  WARNING
+  INFO
+}
+
+enum TemplateScope {
+  GLOBAL
+  ORG
+}
+
+// ---------------------------------------------------------------------------
+// Identity & tenancy
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  locale       Locale   @default(ES)
+  jobTitle     String?
+  phone        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships        Membership[]
+  sessions           Session[]
+  projectMemberships ProjectMember[]
+  invitationsSent    Invitation[]     @relation("InvitedBy")
+  comments           SectionComment[]
+  protocolsCreated   Protocol[]       @relation("ProtocolCreatedBy")
+  protocolsApproved  Protocol[]       @relation("ProtocolApprovedBy")
+  protocolChanges    ProtocolChange[]
+  sectionEdits       SectionContent[] @relation("SectionUpdatedBy")
+  auditLogs          AuditLog[]
+  apiTokens          ApiToken[]
+  auditRuns          AuditRun[]
+  ruleSets           RuleSet[]
+  teamsLed           Team[]           @relation("TeamLead")
+  tidpTasks          TidpTask[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Organization {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  country       String?
+  defaultLocale Locale   @default(ES)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  memberships Membership[]
+  projects    Project[]
+  invitations Invitation[]
+  codeTables  CodeTable[]
+  templates   ProtocolTemplate[]
+  auditLogs   AuditLog[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  orgId     String
+  role      OrgRole  @default(MEMBER)
+  createdAt DateTime @default(now())
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+  @@index([orgId])
+}
+
+model Invitation {
+  id          String    @id @default(cuid())
+  orgId       String
+  email       String
+  role        OrgRole   @default(MEMBER)
+  token       String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  invitedById String
+  createdAt   DateTime  @default(now())
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invitedBy User         @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  @@index([orgId, email])
+}
+
+// ---------------------------------------------------------------------------
+// Project, client, parties and teams
+// ---------------------------------------------------------------------------
+
+model Project {
+  id             String        @id @default(cuid())
+  orgId          String
+  code           String
+  name           String
+  description    String?
+  status         ProjectStatus @default(PLANNING)
+  standard       String        @default("ISO_19650")
+  baseLocale     Locale        @default(ES)
+  enabledLocales Locale[]      @default([ES, EN, PT])
+  country        String?
+  city           String?
+  address        String?
+  startDate      DateTime?
+  endDate        DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  org                 Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  client              Client?
+  parties             Party[]
+  members             ProjectMember[]
+  teams               Team[]
+  softwareTools       SoftwareTool[]
+  raciActivities      RaciActivity[]
+  protocols           Protocol[]
+  namingConventions   NamingConvention[]
+  codeTables          CodeTable[]
+  milestones          Milestone[]
+  tidpTasks           TidpTask[]
+  folderNodes         FolderNode[]
+  parameterGroups     ParameterGroupDef[]
+  sharedParameters    SharedParameterDef[]
+  elementRequirements ElementRequirement[]
+  ruleSets            RuleSet[]
+  auditRuns           AuditRun[]
+  apiTokens           ApiToken[]
+  auditLogs           AuditLog[]
+
+  @@unique([orgId, code])
+  @@index([orgId])
+}
+
+/// Client / appointing party commercial data shown on the protocol cover page.
+model Client {
+  id           String  @id @default(cuid())
+  projectId    String  @unique
+  legalName    String
+  tradeName    String?
+  taxId        String?
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  address      String?
+  city         String?
+  country      String?
+  website      String?
+  notes        String?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Party {
+  id           String    @id @default(cuid())
+  projectId    String
+  name         String
+  type         PartyType
+  code         String?
+  taxId        String?
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  disciplineId String?
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  discipline Discipline?     @relation(fields: [disciplineId], references: [id])
+  members    ProjectMember[]
+  tidpTasks  TidpTask[]
+
+  @@index([projectId])
+}
+
+/// Global catalogue, seeded in the three languages.
+model Discipline {
+  id     String @id @default(cuid())
+  code   String @unique
+  labels Json
+  color  String @default("#64748b")
+  order  Int    @default(0)
+
+  teams               Team[]
+  parties             Party[]
+  members             ProjectMember[]
+  softwareTools       SoftwareTool[]
+  raciAssignments     RaciAssignment[]
+  elementRequirements ElementRequirement[]
+  sharedParameters    SharedParameterDef[]
+}
+
+model Team {
+  id           String   @id @default(cuid())
+  projectId    String
+  name         String
+  disciplineId String?
+  leadId       String?
+  description  String?
+  createdAt    DateTime @default(now())
+
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  discipline      Discipline?      @relation(fields: [disciplineId], references: [id])
+  lead            User?            @relation("TeamLead", fields: [leadId], references: [id])
+  members         ProjectMember[]
+  raciAssignments RaciAssignment[]
+  tidpTasks       TidpTask[]
+
+  @@index([projectId])
+}
+
+model ProjectMember {
+  id           String      @id @default(cuid())
+  projectId    String
+  userId       String
+  role         ProjectRole @default(VIEWER)
+  disciplineId String?
+  teamId       String?
+  partyId      String?
+  jobTitle     String?
+  createdAt    DateTime    @default(now())
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discipline Discipline? @relation(fields: [disciplineId], references: [id])
+  team       Team?       @relation(fields: [teamId], references: [id])
+  party      Party?      @relation(fields: [partyId], references: [id])
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+}
+
+/// Modelling / design software agreed per discipline.
+model SoftwareTool {
+  id             String  @id @default(cuid())
+  projectId      String
+  disciplineId   String?
+  name           String
+  version        String?
+  purpose        String?
+  nativeFormat   String?
+  exchangeFormat String?
+  notes          String?
+  order          Int     @default(0)
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  discipline Discipline? @relation(fields: [disciplineId], references: [id])
+
+  @@index([projectId])
+}
+
+model RaciActivity {
+  id        String @id @default(cuid())
+  projectId String
+  key       String
+  labels    Json
+  stage     Int?
+  order     Int    @default(0)
+
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignments RaciAssignment[]
+
+  @@unique([projectId, key])
+}
+
+model RaciAssignment {
+  id           String       @id @default(cuid())
+  activityId   String
+  projectRole  ProjectRole?
+  teamId       String?
+  disciplineId String?
+  letter       RaciLetter
+
+  activity   RaciActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  team       Team?        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  discipline Discipline?  @relation(fields: [disciplineId], references: [id])
+
+  @@index([activityId])
+}
+
+// ---------------------------------------------------------------------------
+// Protocol document
+// ---------------------------------------------------------------------------
+
+model ProtocolTemplate {
+  id          String        @id @default(cuid())
+  key         String        @unique
+  scope       TemplateScope @default(GLOBAL)
+  orgId       String?
+  standard    String        @default("ISO_19650")
+  version     String        @default("1.0")
+  labels      Json
+  description Json
+  createdAt   DateTime      @default(now())
+
+  org       Organization?     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  sections  TemplateSection[]
+  protocols Protocol[]
+}
+
+model TemplateSection {
+  id          String      @id @default(cuid())
+  templateId  String
+  key         String
+  parentKey   String?
+  order       Int
+  kind        SectionKind @default(RICH_TEXT)
+  isRequired  Boolean     @default(true)
+  titles      Json
+  guidance    Json
+  defaultBody Json?
+
+  template ProtocolTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, key])
+}
+
+model Protocol {
+  id           String         @id @default(cuid())
+  projectId    String
+  versionLabel String
+  status       ProtocolStatus @default(DRAFT)
+  summary      String?
+  templateId   String?
+  createdById  String
+  approvedById String?
+  approvedAt   DateTime?
+  supersedesId String?        @unique
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template     ProtocolTemplate? @relation(fields: [templateId], references: [id])
+  createdBy    User              @relation("ProtocolCreatedBy", fields: [createdById], references: [id])
+  approvedBy   User?             @relation("ProtocolApprovedBy", fields: [approvedById], references: [id])
+  supersedes   Protocol?         @relation("ProtocolRevision", fields: [supersedesId], references: [id])
+  supersededBy Protocol?         @relation("ProtocolRevision")
+  sections     ProtocolSection[]
+  changes      ProtocolChange[]
+
+  @@unique([projectId, versionLabel])
+  @@index([projectId])
+}
+
+model ProtocolSection {
+  id         String      @id @default(cuid())
+  protocolId String
+  key        String
+  parentKey  String?
+  order      Int
+  kind       SectionKind @default(RICH_TEXT)
+  isRequired Boolean     @default(true)
+  guidance   Json?
+
+  protocol Protocol         @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  contents SectionContent[]
+  comments SectionComment[]
+
+  @@unique([protocolId, key])
+  @@index([protocolId])
+}
+
+/// One row per locale. Prose is Markdown so that version diffs stay readable
+/// and both PDF and DOCX exports render from the same source.
+model SectionContent {
+  id          String   @id @default(cuid())
+  sectionId   String
+  locale      Locale
+  title       String
+  body        String   @default("")
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  section   ProtocolSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  updatedBy User?           @relation("SectionUpdatedBy", fields: [updatedById], references: [id])
+
+  @@unique([sectionId, locale])
+}
+
+model SectionComment {
+  id         String    @id @default(cuid())
+  sectionId  String
+  userId     String
+  body       String
+  resolved   Boolean   @default(false)
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  section ProtocolSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId])
+}
+
+model ProtocolChange {
+  id         String   @id @default(cuid())
+  protocolId String
+  userId     String?
+  sectionKey String?
+  locale     Locale?
+  action     String
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  protocol Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id])
+
+  @@index([protocolId])
+}
+
+// ---------------------------------------------------------------------------
+// Naming engine
+// ---------------------------------------------------------------------------
+
+model NamingConvention {
+  id          String       @id @default(cuid())
+  projectId   String
+  key         String
+  target      NamingTarget
+  separator   String       @default("-")
+  caseRule    CaseRule     @default(UPPER)
+  maxLength   Int?
+  isActive    Boolean      @default(true)
+  version     Int          @default(1)
+  labels      Json
+  description Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  project  Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fields   NamingField[]
+  examples NamingExample[]
+
+  @@unique([projectId, key])
+  @@index([projectId, target])
+}
+
+model NamingField {
+  id           String      @id @default(cuid())
+  conventionId String
+  order        Int
+  key          String
+  labels       Json
+  source       FieldSource
+  codeTableId  String?
+  minLength    Int?
+  maxLength    Int?
+  pattern      String?
+  dateFormat   String?
+  required     Boolean     @default(true)
+  example      String?
+  description  Json?
+
+  convention NamingConvention @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  codeTable  CodeTable?       @relation(fields: [codeTableId], references: [id])
+
+  @@unique([conventionId, key])
+  @@index([conventionId])
+}
+
+model CodeTable {
+  id          String   @id @default(cuid())
+  projectId   String?
+  orgId       String?
+  key         String
+  labels      Json
+  description Json?
+  createdAt   DateTime @default(now())
+
+  project Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  org     Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  values  CodeValue[]
+  fields  NamingField[]
+
+  @@unique([projectId, key])
+  @@index([orgId])
+}
+
+model CodeValue {
+  id          String @id @default(cuid())
+  tableId     String
+  code        String
+  labels      Json
+  description Json?
+  order       Int    @default(0)
+
+  table CodeTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@unique([tableId, code])
+}
+
+/// Test cases for a convention: publishing fails if any of them disagrees with
+/// the compiled rule, so a convention can never silently drift.
+model NamingExample {
+  id            String  @id @default(cuid())
+  conventionId  String
+  sample        String
+  shouldBeValid Boolean @default(true)
+  note          String?
+
+  convention NamingConvention @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+
+  @@index([conventionId])
+}
+
+// ---------------------------------------------------------------------------
+// Deliverables, CDE folders, parameters and LOIN  (phase 2 surface)
+// ---------------------------------------------------------------------------
+
+model Milestone {
+  id        String    @id @default(cuid())
+  projectId String
+  key       String
+  name      String
+  isoStage  Int?
+  date      DateTime?
+  order     Int       @default(0)
+
+  project      Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tidpTasks    TidpTask[]
+  requirements ElementRequirement[]
+
+  @@unique([projectId, key])
+}
+
+model TidpTask {
+  id            String    @id @default(cuid())
+  projectId     String
+  milestoneId   String?
+  partyId       String?
+  teamId        String?
+  container     String
+  description   String?
+  responsibleId String?
+  dueDate       DateTime?
+  status        String    @default("PLANNED")
+
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id])
+  party       Party?     @relation(fields: [partyId], references: [id])
+  team        Team?      @relation(fields: [teamId], references: [id])
+  responsible User?      @relation(fields: [responsibleId], references: [id])
+
+  @@index([projectId])
+}
+
+model FolderNode {
+  id          String    @id @default(cuid())
+  projectId   String
+  parentId    String?
+  namePattern String
+  cdeState    CdeState?
+  order       Int       @default(0)
+  notes       Json?
+
+  project  Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent   FolderNode?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children FolderNode[] @relation("FolderTree")
+
+  @@index([projectId])
+}
+
+model ParameterGroupDef {
+  id        String @id @default(cuid())
+  projectId String
+  name      String
+  order     Int    @default(0)
+
+  project    Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parameters SharedParameterDef[]
+
+  @@unique([projectId, name])
+}
+
+model SharedParameterDef {
+  id           String   @id @default(cuid())
+  projectId    String
+  groupId      String?
+  guid         String
+  name         String
+  dataType     String   @default("TEXT")
+  isInstance   Boolean  @default(true)
+  categories   String[] @default([])
+  ifcPset      String?
+  ifcProperty  String?
+  required     Boolean  @default(false)
+  disciplineId String?
+  description  Json?
+
+  project    Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  group      ParameterGroupDef? @relation(fields: [groupId], references: [id])
+  discipline Discipline?        @relation(fields: [disciplineId], references: [id])
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+/// LOIN per element category and milestone (EN 17412-1), not a bare "LOD 300".
+model ElementRequirement {
+  id             String   @id @default(cuid())
+  projectId      String
+  milestoneId    String?
+  disciplineId   String?
+  revitCategory  String
+  ifcClass       String?
+  lodGeometry    String?
+  loiInformation String?
+  documentation  String?
+  requiredParams String[] @default([])
+  notes          Json?
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone  Milestone?  @relation(fields: [milestoneId], references: [id])
+  discipline Discipline? @relation(fields: [disciplineId], references: [id])
+
+  @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Compiled rules, audits and API access
+// ---------------------------------------------------------------------------
+
+/// Immutable snapshot of the protocol's machine-checkable rules, consumed by
+/// the Revit add-in and the IFC auditor.
+model RuleSet {
+  id            String   @id @default(cuid())
+  projectId     String
+  version       Int
+  payload       Json
+  publishedAt   DateTime @default(now())
+  publishedById String?
+
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  publishedBy User?   @relation(fields: [publishedById], references: [id])
+
+  @@unique([projectId, version])
+}
+
+model AuditRun {
+  id             String      @id @default(cuid())
+  projectId      String
+  source         AuditSource
+  modelName      String
+  ruleSetVersion Int?
+  startedAt      DateTime    @default(now())
+  finishedAt     DateTime?
+  createdById    String?
+  totalChecked   Int         @default(0)
+  errorCount     Int         @default(0)
+  warningCount   Int         @default(0)
+  metadata       Json?
+
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?          @relation(fields: [createdById], references: [id])
+  findings  AuditFinding[]
+
+  @@index([projectId, startedAt])
+}
+
+model AuditFinding {
+  id          String   @id @default(cuid())
+  runId       String
+  severity    Severity @default(ERROR)
+  ruleKey     String
+  elementId   String?
+  elementName String?
+  category    String?
+  actual      String?
+  expected    String?
+  message     String?
+
+  run AuditRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, severity])
+}
+
+model ApiToken {
+  id          String    @id @default(cuid())
+  projectId   String
+  name        String
+  tokenHash   String    @unique
+  prefix      String
+  scopes      String[]  @default([])
+  createdById String
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdById], references: [id])
+
+  @@index([projectId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  orgId     String?
+  projectId String?
+  userId    String?
+  entity    String
+  entityId  String?
+  action    String
+  diff      Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  org     Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?         @relation(fields: [userId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@index([projectId, createdAt])
+}
