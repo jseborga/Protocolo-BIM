@@ -8,6 +8,14 @@ const prisma = new PrismaClient()
 
 const DEMO_PASSWORD = 'demo1234'
 
+/**
+ * The catalogue (disciplines and the ISO 19650 template) is setup data every
+ * installation needs, and re-running it is harmless because it upserts. The
+ * demo organisation is not: a real deployment must not be given a fake project,
+ * so it only appears when explicitly asked for.
+ */
+const SEED_DEMO = process.env.SEED_DEMO === 'true'
+
 async function seedDisciplines() {
   for (const discipline of DISCIPLINE_SEED) {
     await prisma.discipline.upsert({
@@ -381,7 +389,13 @@ async function main() {
   console.log('Seeding Protocolo BIM…')
   await seedDisciplines()
   await seedTemplate()
-  await seedDemo()
+
+  if (SEED_DEMO) {
+    await seedDemo()
+  } else {
+    console.log('  demo data skipped (set SEED_DEMO=true to create it)')
+  }
+
   console.log('Done.')
 }
 

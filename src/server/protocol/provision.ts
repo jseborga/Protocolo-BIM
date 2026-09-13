@@ -1,5 +1,5 @@
 import { type Locale, type Prisma, type SectionKind } from '@prisma/client'
-import { appLocaleToDb, type AppLocale } from '@/i18n/routing'
+import { appLocaleToDb, type AppLocale } from '@/i18n/locales'
 import type { LocalizedText } from '@/server/naming/types'
 import {
   CODE_TABLE_SEEDS,

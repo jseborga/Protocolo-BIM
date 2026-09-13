@@ -25,15 +25,20 @@ cp .env.example .env          # then edit DATABASE_URL and AUTH_SECRET
 # 3. Install, migrate, seed
 npm install
 npx prisma migrate deploy
-npx prisma db seed
+npm run db:seed               # disciplines + ISO 19650 template
+npm run db:seed:demo          # …plus the sample project, for development
 
 # 4. Run
 npm run dev                   # http://localhost:3000/es
 ```
 
-The seed creates a demo organisation with a fully populated project
-(`EDI — Edificio Corporativo Alameda`) and four users, all with the password
-`demo1234`:
+`db:seed` loads only the catalogue every installation needs: the 12 disciplines
+and the 27-section ISO 19650 template. The demo data is separate and never
+created by accident, so a production deployment cannot end up with a fake
+project in it.
+
+`db:seed:demo` adds a fully populated project (`EDI — Edificio Corporativo
+Alameda`) and four users, all with the password `demo1234`:
 
 | Email | Project role |
 | --- | --- |
@@ -137,6 +142,23 @@ Five sections are rendered from live project data rather than typed: project
 and client information, the delivery team, the RACI matrix, the software stack
 and the active naming conventions. They produce Markdown, so the editor, the
 PDF and the DOCX all receive them through the same path as authored prose.
+
+---
+
+## Deployment
+
+The repository ships a production `Dockerfile`. The container applies its own
+migrations and seeds the catalogue on start, so a deployment is one app service
+plus a PostgreSQL service.
+
+- **Easypanel**: step-by-step guide in [`docs/DEPLOY-EASYPANEL.md`](docs/DEPLOY-EASYPANEL.md).
+  Use the Dockerfile build method — the autodetected Node build has no Chromium
+  and the PDF export needs a real browser.
+- **Any Docker host**: `docker-compose.prod.yml` brings up the app and
+  PostgreSQL together.
+
+The image is around 1.6 GB, mostly Chromium. Building it needs roughly 2 GB of
+RAM.
 
 ---
 

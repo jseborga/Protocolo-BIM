@@ -11,14 +11,15 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "tsx scripts/reset-demo.ts && prisma db seed && playwright test",
+    "test:e2e": "tsx scripts/reset-demo.ts && SEED_DEMO=true prisma db seed && playwright test",
     "verify:naming": "tsx scripts/verify-naming.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
-    "db:reset:demo": "tsx scripts/reset-demo.ts && prisma db seed"
+    "db:reset:demo": "tsx scripts/reset-demo.ts && SEED_DEMO=true prisma db seed",
+    "db:seed:demo": "SEED_DEMO=true prisma db seed"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -44,6 +45,7 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
+    "esbuild": "^0.28.2",
     "prisma": "^6.1.0",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",
