@@ -5,6 +5,7 @@ import { useActionState } from 'react'
 import { SubmitButton } from '@/components/SubmitButton'
 import { FormError } from '@/components/ui'
 import type { TeamActionState } from '@/server/team/actions'
+import type { InviteState } from '@/server/team/invitations'
 
 type Action = (state: TeamActionState, formData: FormData) => Promise<TeamActionState>
 
@@ -23,35 +24,59 @@ const ROLES = [
   'VIEWER',
 ] as const
 
-export function AddMemberForm({
+export function InviteForm({
   action,
   disciplines,
   parties,
 }: {
-  action: Action
+  action: (state: InviteState, formData: FormData) => Promise<InviteState>
   disciplines: Option[]
   parties: Option[]
 }) {
   const t = useTranslations('team')
   const roles = useTranslations('projectRole')
   const common = useTranslations('common')
-  const [state, formAction] = useActionState<TeamActionState, FormData>(action, {})
+  const [state, formAction] = useActionState<InviteState, FormData>(action, {})
 
   return (
     <form action={formAction} className="space-y-3">
       <FormError>{state.error ? t(state.error) : null}</FormError>
+
+      {state.added ? (
+        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+          {t('addedDirectly')}
+        </p>
+      ) : null}
+
+      {state.invited && state.emailDelivered ? (
+        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+          {t('invitationSent')}
+        </p>
+      ) : null}
+
+      {state.invited && !state.emailDelivered && state.inviteUrl ? (
+        <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <p>{t('invitationCreated')}</p>
+          <p className="mt-2 break-all rounded border border-amber-200 bg-white/70 p-2 font-mono text-xs dark:border-amber-900 dark:bg-black/20">
+            {state.inviteUrl}
+          </p>
+        </div>
+      ) : null}
+
+      <p className="muted text-xs">{t('inviteHint')}</p>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <label className="label" htmlFor="member-email">
-            {t('memberEmail')}
+          <label className="label" htmlFor="invite-email">
+            {t('inviteEmail')}
           </label>
-          <input id="member-email" name="email" type="email" required className="field" />
+          <input id="invite-email" name="email" type="email" required className="field" />
         </div>
         <div>
-          <label className="label" htmlFor="member-role">
+          <label className="label" htmlFor="invite-role">
             {common('role')}
           </label>
-          <select id="member-role" name="role" className="field" defaultValue="BIM_MODELLER">
+          <select id="invite-role" name="role" className="field" defaultValue="BIM_MODELLER">
             {ROLES.map((role) => (
               <option key={role} value={role}>
                 {roles(role)}
@@ -60,10 +85,10 @@ export function AddMemberForm({
           </select>
         </div>
         <div>
-          <label className="label" htmlFor="member-discipline">
+          <label className="label" htmlFor="invite-discipline">
             {common('discipline')}
           </label>
-          <select id="member-discipline" name="disciplineId" className="field">
+          <select id="invite-discipline" name="disciplineId" className="field">
             <option value="">{common('none')}</option>
             {disciplines.map((discipline) => (
               <option key={discipline.id} value={discipline.id}>
@@ -73,10 +98,10 @@ export function AddMemberForm({
           </select>
         </div>
         <div>
-          <label className="label" htmlFor="member-party">
+          <label className="label" htmlFor="invite-party">
             {t('parties')}
           </label>
-          <select id="member-party" name="partyId" className="field">
+          <select id="invite-party" name="partyId" className="field">
             <option value="">{common('none')}</option>
             {parties.map((party) => (
               <option key={party.id} value={party.id}>
@@ -86,7 +111,9 @@ export function AddMemberForm({
           </select>
         </div>
       </div>
-      <SubmitButton className="btn-secondary text-xs">{t('addMember')}</SubmitButton>
+      <SubmitButton className="btn-secondary text-xs" pendingLabel={common('loading')}>
+        {t('invite')}
+      </SubmitButton>
     </form>
   )
 }

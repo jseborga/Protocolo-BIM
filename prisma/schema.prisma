@@ -31,6 +31,23 @@ enum OrgRole {
   MEMBER
 }
 
+/// Access to the platform itself, independent from any organisation or
+/// project. Used by the back office; it grants nothing on project content.
+enum PlatformRole {
+  USER
+  SUPPORT
+  ADMIN
+}
+
+/// Who can reach a project without being a member of it.
+enum ProjectVisibility {
+  /// Anyone in the owning organisation can open it.
+  ORGANISATION
+  /// Only people explicitly added to the project, plus its organisation's
+  /// owners and admins.
+  MEMBERS_ONLY
+}
+
 /// ISO 19650 project-level responsibilities, independent from app permissions.
 enum ProjectRole {
   INFORMATION_MANAGER
@@ -137,31 +154,42 @@ enum TemplateScope {
 // ---------------------------------------------------------------------------
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
+  id String @id @default(cuid())
+
+  email         String    @unique
+  /// Set when an identity provider has asserted the address, or when the user
+  /// arrived through an invitation sent to it. Account linking depends on it.
+  emailVerified DateTime?
+  /// Absent for accounts that only ever sign in with Google or Microsoft.
+  passwordHash  String?
+
   name         String
-  locale       Locale   @default(ES)
+  image        String?
+  locale       Locale       @default(ES)
   jobTitle     String?
   phone        String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isActive     Boolean      @default(true)
+  platformRole PlatformRole @default(USER)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   memberships        Membership[]
   sessions           Session[]
+  oauthAccounts      OAuthAccount[]
+  projectInvitesSent ProjectInvitation[] @relation("ProjectInvitedBy")
+  projectInvitesUsed ProjectInvitation[] @relation("ProjectInviteAcceptedBy")
   projectMemberships ProjectMember[]
-  invitationsSent    Invitation[]     @relation("InvitedBy")
+  invitationsSent    Invitation[]        @relation("InvitedBy")
   comments           SectionComment[]
-  protocolsCreated   Protocol[]       @relation("ProtocolCreatedBy")
-  protocolsApproved  Protocol[]       @relation("ProtocolApprovedBy")
+  protocolsCreated   Protocol[]          @relation("ProtocolCreatedBy")
+  protocolsApproved  Protocol[]          @relation("ProtocolApprovedBy")
   protocolChanges    ProtocolChange[]
-  sectionEdits       SectionContent[] @relation("SectionUpdatedBy")
+  sectionEdits       SectionContent[]    @relation("SectionUpdatedBy")
   auditLogs          AuditLog[]
   apiTokens          ApiToken[]
   auditRuns          AuditRun[]
   ruleSets           RuleSet[]
-  teamsLed           Team[]           @relation("TeamLead")
+  teamsLed           Team[]              @relation("TeamLead")
   tidpTasks          TidpTask[]
 }
 
@@ -178,6 +206,23 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+/// A federated identity bound to an account. One user can hold several, so
+/// signing in with Google and with Microsoft reaches the same person.
+model OAuthAccount {
+  id                String    @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  email             String?
+  createdAt         DateTime  @default(now())
+  lastLoginAt       DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Organization {
@@ -233,22 +278,23 @@ model Invitation {
 // ---------------------------------------------------------------------------
 
 model Project {
-  id             String        @id @default(cuid())
+  id             String            @id @default(cuid())
   orgId          String
   code           String
   name           String
   description    String?
-  status         ProjectStatus @default(PLANNING)
-  standard       String        @default("ISO_19650")
-  baseLocale     Locale        @default(ES)
-  enabledLocales Locale[]      @default([ES, EN, PT])
+  status         ProjectStatus     @default(PLANNING)
+  visibility     ProjectVisibility @default(ORGANISATION)
+  standard       String            @default("ISO_19650")
+  baseLocale     Locale            @default(ES)
+  enabledLocales Locale[]          @default([ES, EN, PT])
   country        String?
   city           String?
   address        String?
   startDate      DateTime?
   endDate        DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   org                 Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
   client              Client?
@@ -270,6 +316,7 @@ model Project {
   auditRuns           AuditRun[]
   apiTokens           ApiToken[]
   auditLogs           AuditLog[]
+  invitations         ProjectInvitation[]
 
   @@unique([orgId, code])
   @@index([orgId])
@@ -308,12 +355,41 @@ model Party {
   notes        String?
   createdAt    DateTime  @default(now())
 
-  project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  discipline Discipline?     @relation(fields: [disciplineId], references: [id])
-  members    ProjectMember[]
-  tidpTasks  TidpTask[]
+  project     Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  discipline  Discipline?         @relation(fields: [disciplineId], references: [id])
+  members     ProjectMember[]
+  tidpTasks   TidpTask[]
+  invitations ProjectInvitation[]
 
   @@index([projectId])
+}
+
+/// Invitation to a single project, addressed to an email that need not belong
+/// to the organisation — that is what lets a project team span companies.
+model ProjectInvitation {
+  id           String      @id @default(cuid())
+  projectId    String
+  email        String
+  role         ProjectRole @default(VIEWER)
+  disciplineId String?
+  partyId      String?
+  jobTitle     String?
+  token        String      @unique
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  acceptedById String?
+  revokedAt    DateTime?
+  invitedById  String
+  createdAt    DateTime    @default(now())
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  discipline Discipline? @relation(fields: [disciplineId], references: [id])
+  party      Party?      @relation(fields: [partyId], references: [id])
+  invitedBy  User        @relation("ProjectInvitedBy", fields: [invitedById], references: [id])
+  acceptedBy User?       @relation("ProjectInviteAcceptedBy", fields: [acceptedById], references: [id])
+
+  @@index([projectId, email])
+  @@index([email])
 }
 
 /// Global catalogue, seeded in the three languages.
@@ -331,6 +407,7 @@ model Discipline {
   raciAssignments     RaciAssignment[]
   elementRequirements ElementRequirement[]
   sharedParameters    SharedParameterDef[]
+  projectInvitations  ProjectInvitation[]
 }
 
 model Team {

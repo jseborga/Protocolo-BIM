@@ -1,6 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import { PageHeader, SectionCard } from '@/components/ui'
-import { type AppLocale, dbLocaleToApp } from '@/i18n/routing'
+import { type AppLocale, dbLocaleToApp } from '@/i18n/locales'
 import { requireProjectAccess } from '@/server/authz'
 import { updateProjectAction, type SettingsState } from '@/server/projects/settings'
 import { SettingsForm } from './SettingsForm'
@@ -33,6 +33,7 @@ export default async function SettingsPage({
             name: access.project.name,
             description: access.project.description,
             status: access.project.status,
+            visibility: access.project.visibility,
             country: access.project.country,
             city: access.project.city,
             address: access.project.address,

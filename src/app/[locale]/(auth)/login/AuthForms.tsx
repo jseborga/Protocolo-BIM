@@ -9,14 +9,23 @@ import type { AuthFormState } from '@/server/auth/actions'
 
 type Action = (state: AuthFormState, formData: FormData) => Promise<AuthFormState>
 
-export function LoginForm({ action }: { action: Action }) {
+export function LoginForm({
+  action,
+  next,
+  providerError,
+}: {
+  action: Action
+  next?: string
+  providerError?: string
+}) {
   const t = useTranslations('auth')
   const common = useTranslations('common')
   const [state, formAction] = useActionState<AuthFormState, FormData>(action, {})
 
   return (
     <form action={formAction} className="space-y-4">
-      <FormError>{state.error ? t(state.error) : null}</FormError>
+      {next ? <input type="hidden" name="next" value={next} /> : null}
+      <FormError>{providerError ? t(providerError) : state.error ? t(state.error) : null}</FormError>
       <div>
         <label className="label" htmlFor="email">
           {common('email')}
@@ -43,13 +52,14 @@ export function LoginForm({ action }: { action: Action }) {
   )
 }
 
-export function RegisterForm({ action }: { action: Action }) {
+export function RegisterForm({ action, next }: { action: Action; next?: string }) {
   const t = useTranslations('auth')
   const common = useTranslations('common')
   const [state, formAction] = useActionState<AuthFormState, FormData>(action, {})
 
   return (
     <form action={formAction} className="space-y-4">
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <FormError>{state.error ? t(state.error) : null}</FormError>
       <div>
         <label className="label" htmlFor="name">
@@ -59,9 +69,10 @@ export function RegisterForm({ action }: { action: Action }) {
       </div>
       <div>
         <label className="label" htmlFor="orgName">
-          {t('orgName')}
+          {t('orgOptional')}
         </label>
-        <input id="orgName" name="orgName" required className="field" autoComplete="organization" />
+        <input id="orgName" name="orgName" className="field" autoComplete="organization" />
+        <p className="muted mt-1 text-xs">{t('orgOptionalHint')}</p>
       </div>
       <div>
         <label className="label" htmlFor="email">

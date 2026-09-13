@@ -49,8 +49,13 @@ browser.
    ```env
    DATABASE_URL=postgresql://postgres:PASSWORD@protocolo-bim_db:5432/db?schema=public
    AUTH_SECRET=paste-a-32-byte-random-string
-   NEXT_PUBLIC_APP_URL=https://protocolo.tu-dominio.com
+   APP_URL=https://protocolo.tu-dominio.com
    ```
+
+   `APP_URL` has no `NEXT_PUBLIC_` prefix on purpose: variables with that prefix
+   are baked into the bundle when the image is built, so one set here would be
+   ignored and both the sign-in redirect and invitation links would point at
+   localhost.
 
    Generate the secret on your machine with `openssl rand -base64 32`. Sessions
    are signed with it, so changing it later signs everybody out.
@@ -92,6 +97,9 @@ so a deploy never lands on a schema the code does not expect.
 
 | Variable | Purpose |
 | --- | --- |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Enable "Continue with Google". See [AUTH-PROVIDERS.md](AUTH-PROVIDERS.md). |
+| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | Enable "Continue with Microsoft". `MICROSOFT_TENANT_ID` restricts it to one tenant. |
+| `RESEND_API_KEY` or `SMTP_URL`, plus `MAIL_FROM` | Deliver project invitations by email. Without them the invitation is still created and the link is shown to pass on by hand. |
 | `SEED_DEMO=true` | Creates the sample project and four demo accounts with the password `demo1234`. Useful to evaluate the app; **remove it and delete the data before going live.** |
 | `CHROMIUM_EXECUTABLE_PATH` | Defaults to `/usr/bin/chromium`, the browser inside the image. Only set it if you supply your own. |
 | `PORT` | Defaults to 3000. Keep it aligned with the port in the Domains tab. |

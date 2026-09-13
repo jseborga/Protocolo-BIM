@@ -51,6 +51,7 @@ export async function resolveProjectAccess(projectId: string): Promise<ProjectAc
   const context: AccessContext = {
     orgRole: membership?.role ?? null,
     projectRole: projectMember?.role ?? null,
+    visibility: project.visibility,
   }
 
   if (!canAccessProject(context)) return null

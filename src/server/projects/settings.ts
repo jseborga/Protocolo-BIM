@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { appLocaleToDb, type AppLocale } from '@/i18n/routing'
+import { appLocaleToDb, type AppLocale } from '@/i18n/locales'
 import { prisma } from '@/lib/prisma'
 import { requireProjectAccess } from '@/server/authz'
 
@@ -16,6 +16,7 @@ const schema = z.object({
   name: z.string().trim().min(3).max(120),
   description: z.string().trim().max(2000).nullable(),
   status: z.enum(['PLANNING', 'ACTIVE', 'ON_HOLD', 'CLOSED']),
+  visibility: z.enum(['ORGANISATION', 'MEMBERS_ONLY']),
   country: z.string().trim().max(80).nullable(),
   city: z.string().trim().max(80).nullable(),
   address: z.string().trim().max(200).nullable(),
@@ -37,6 +38,7 @@ export async function updateProjectAction(
     name: String(formData.get('name') ?? ''),
     description: String(formData.get('description') ?? '') || null,
     status: String(formData.get('status') ?? 'PLANNING'),
+    visibility: String(formData.get('visibility') ?? 'ORGANISATION'),
     country: String(formData.get('country') ?? '') || null,
     city: String(formData.get('city') ?? '') || null,
     address: String(formData.get('address') ?? '') || null,
@@ -56,6 +58,7 @@ export async function updateProjectAction(
         name: parsed.data.name,
         description: parsed.data.description,
         status: parsed.data.status,
+        visibility: parsed.data.visibility,
         country: parsed.data.country,
         city: parsed.data.city,
         address: parsed.data.address,

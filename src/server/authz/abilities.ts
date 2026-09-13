@@ -1,4 +1,4 @@
-import type { OrgRole, ProjectRole } from '@prisma/client'
+import type { OrgRole, ProjectRole, ProjectVisibility } from '@prisma/client'
 
 /**
  * Everything a user can attempt inside a project. Kept as a closed union so a
@@ -80,6 +80,8 @@ export interface AccessContext {
   orgRole: OrgRole | null
   /** Project role, when the user is a member of the project. */
   projectRole: ProjectRole | null
+  /** How open the project is to the rest of its organisation. */
+  visibility?: ProjectVisibility
 }
 
 export function abilitiesFor(context: AccessContext): Set<Ability> {
@@ -95,10 +97,19 @@ export function can(context: AccessContext, ability: Ability): boolean {
 }
 
 /**
- * A member of the organisation who is not on the project still sees it, so that
- * internal staff are not locked out of their own company's work. Someone
- * outside the organisation sees nothing unless explicitly added to the project.
+ * Who may open a project at all.
+ *
+ * Membership of the project is the unit of access, and it stands on its own:
+ * an appointed party from another company is added to the project without ever
+ * joining the owning organisation, and therefore sees nothing else of it. That
+ * is what makes a delivery team able to span companies.
+ *
+ * On top of that, an organisation's owners and admins reach every project they
+ * are responsible for, and ordinary colleagues reach the ones left open to the
+ * organisation, so internal staff are not locked out of their own work.
  */
 export function canAccessProject(context: AccessContext): boolean {
-  return context.orgRole !== null || context.projectRole !== null
+  if (context.projectRole !== null) return true
+  if (context.orgRole === 'OWNER' || context.orgRole === 'ADMIN') return true
+  return context.orgRole !== null && (context.visibility ?? 'ORGANISATION') === 'ORGANISATION'
 }

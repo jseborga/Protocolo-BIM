@@ -11,10 +11,24 @@ export default async function ProjectsPage({ params }: { params: Promise<{ local
   const statusLabels = await getTranslations({ locale, namespace: 'projectStatus' })
   const dashboard = await getTranslations({ locale, namespace: 'dashboard' })
 
-  const orgIds = user.memberships.map((membership) => membership.orgId)
+  // The same rule `canAccessProject` applies, expressed as a query: projects
+  // the user is on, plus those their organisation lets them reach. Listing
+  // every project of every organisation they belong to would leak the ones
+  // deliberately closed to the rest of the company.
+  const administeredOrgIds = user.memberships
+    .filter((membership) => membership.role === 'OWNER' || membership.role === 'ADMIN')
+    .map((membership) => membership.orgId)
+  const memberOrgIds = user.memberships
+    .filter((membership) => membership.role === 'MEMBER')
+    .map((membership) => membership.orgId)
+
   const projects = await prisma.project.findMany({
     where: {
-      OR: [{ orgId: { in: orgIds } }, { members: { some: { userId: user.id } } }],
+      OR: [
+        { members: { some: { userId: user.id } } },
+        { orgId: { in: administeredOrgIds } },
+        { orgId: { in: memberOrgIds }, visibility: 'ORGANISATION' },
+      ],
     },
     include: {
       org: true,
@@ -35,13 +49,25 @@ export default async function ProjectsPage({ params }: { params: Promise<{ local
     <>
       <PageHeader
         title={t('title')}
-        subtitle={user.memberships[0] ? t('subtitle', { org: user.memberships[0].org.name }) : undefined}
+        subtitle={
+          user.memberships[0] ? t('subtitle', { org: user.memberships[0].org.name }) : undefined
+        }
         actions={
-          <Link href="/projects/new" className="btn-primary">
-            {t('new')}
-          </Link>
+          // Creating a project needs an organisation to own it; an account that
+          // only ever gets invited to other people's projects has none.
+          user.memberships.length > 0 ? (
+            <Link href="/projects/new" className="btn-primary">
+              {t('new')}
+            </Link>
+          ) : null
         }
       />
+
+      {user.memberships.length === 0 ? (
+        <p className="muted mb-6 rounded-lg border border-dashed border-[color:var(--border)] px-4 py-3 text-sm">
+          {t('noOrganisation')}
+        </p>
+      ) : null}
 
       {projects.length === 0 ? (
         <EmptyState>{t('empty')}</EmptyState>

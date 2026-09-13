@@ -81,7 +81,19 @@
     "inviteTitle": "Invitation to {org}",
     "inviteBody": "Set your password to join the team.",
     "inviteInvalid": "This invitation is invalid or has expired.",
-    "inviteAccept": "Join"
+    "inviteAccept": "Join",
+    "continueWith": "Continue with {provider}",
+    "orWithEmail": "or with your email",
+    "orgOptional": "Organisation name",
+    "orgOptionalHint": "Optional. Leave it empty if you were invited to a project and will not create your own.",
+    "errorProvider": "That sign-in method is not configured on this server.",
+    "errorState": "The sign-in attempt expired. Try again.",
+    "errorCancelled": "You cancelled the sign-in.",
+    "errorExchange": "The sign-in could not be completed with the provider.",
+    "errorEmailNotVerified": "Your provider does not confirm that address belongs to you. Sign in with your password, or use a work account.",
+    "errorNoEmail": "The provider did not supply an email address.",
+    "errorAccountDisabled": "This account is deactivated.",
+    "noPassword": "This account signs in with Google or Microsoft."
   },
   "nav": {
     "projects": "Projects",
@@ -114,7 +126,12 @@
     "endDate": "End",
     "createdFrom": "Created with the ISO 19650 template and the baseline naming conventions.",
     "codeTaken": "A project with that code already exists",
-    "codeInvalid": "Use 2 to 10 letters or digits, no spaces"
+    "codeInvalid": "Use 2 to 10 letters or digits, no spaces",
+    "visibility": "Visibility within the organisation",
+    "visibilityORGANISATION": "The whole organisation",
+    "visibilityMEMBERS_ONLY": "The project team only",
+    "visibilityHint": "External guests and the project team always get in; this decides whether the rest of your organisation does too.",
+    "noOrganisation": "You have no organisation yet. Create one to start your own projects."
   },
   "projectStatus": {
     "PLANNING": "Planning",
@@ -168,7 +185,24 @@
     "softwareVersion": "Version",
     "nativeFormat": "Native format",
     "exchangeFormat": "Exchange format",
-    "purpose": "Purpose"
+    "purpose": "Purpose",
+    "invite": "Invite to the project",
+    "inviteHint": "You can invite people from other companies: they join this project only and never see the rest of your organisation.",
+    "inviteEmail": "Person's email",
+    "pendingInvitations": "Pending invitations",
+    "noPendingInvitations": "No pending invitations.",
+    "invitedOn": "Invited on {date}",
+    "revoke": "Revoke",
+    "addedDirectly": "Added to the project: they already belong to your organisation.",
+    "invitationSent": "Invitation sent by email.",
+    "invitationCreated": "Invitation created. No mail is configured, so pass this link on yourself:",
+    "copyLink": "Copy link",
+    "alreadyInvited": "That person already has a pending invitation.",
+    "invalidEmail": "Invalid email address.",
+    "notAllowed": "You are not allowed to manage the team.",
+    "external": "External",
+    "externalHint": "Works on this project without belonging to the organisation.",
+    "newLink": "New link"
   },
   "projectRole": {
     "INFORMATION_MANAGER": "Information manager",
@@ -359,5 +393,27 @@
     "forbidden": "You are not allowed to do this.",
     "unexpected": "An unexpected error occurred.",
     "goHome": "Go home"
+  },
+  "invite": {
+    "title": "Project invitation",
+    "subtitle": "{inviter} is inviting you to work on this project.",
+    "accept": "Accept invitation",
+    "accepted": "You are now on the project.",
+    "goToProject": "Go to the project",
+    "signInFirst": "Sign in or create your account to accept the invitation.",
+    "signInToAccept": "Sign in and accept",
+    "createAccountToAccept": "Create account and accept",
+    "invitedEmail": "Invitation sent to {email}",
+    "wrongAccount": "This invitation is for {email} and you signed in with a different account. Sign out and come back with the right one.",
+    "invalid": "This invitation is not valid, or it was revoked.",
+    "expired": "This invitation has expired. Ask for a new one.",
+    "alreadyAccepted": "This invitation has already been used.",
+    "expiresOn": "Expires on {date}",
+    "onlyThisProject": "Accepting puts you on this project only. You do not join {org}, and you do not see its other projects.",
+    "emailSubject": "Invitation to the project {project}",
+    "emailHeading": "You have been invited to a BIM project",
+    "emailBody": "{inviter} is inviting you to work on {project}. Accept the invitation to reach the project protocol.",
+    "emailIgnore": "If you were not expecting this invitation, you can ignore this message.",
+    "emailExpires": "The link expires in {days} days."
   }
 }

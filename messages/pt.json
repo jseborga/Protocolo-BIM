@@ -81,7 +81,19 @@
     "inviteTitle": "Convite para {org}",
     "inviteBody": "Defina a sua palavra-passe para se juntar à equipa.",
     "inviteInvalid": "Este convite é inválido ou expirou.",
-    "inviteAccept": "Juntar-me"
+    "inviteAccept": "Juntar-me",
+    "continueWith": "Continuar com {provider}",
+    "orWithEmail": "ou com o seu correio",
+    "orgOptional": "Nome da organização",
+    "orgOptionalHint": "Opcional. Deixe vazio se foi convidado para um projeto e não vai criar projetos próprios.",
+    "errorProvider": "Esse método de acesso não está configurado neste servidor.",
+    "errorState": "A tentativa de acesso expirou. Tente novamente.",
+    "errorCancelled": "Cancelou o acesso.",
+    "errorExchange": "Não foi possível concluir o acesso com o fornecedor.",
+    "errorEmailNotVerified": "O seu fornecedor não confirma que esse correio é seu. Entre com a sua palavra-passe ou use uma conta corporativa.",
+    "errorNoEmail": "O fornecedor não forneceu qualquer correio eletrónico.",
+    "errorAccountDisabled": "Esta conta está desativada.",
+    "noPassword": "Esta conta entra com Google ou Microsoft."
   },
   "nav": {
     "projects": "Projetos",
@@ -114,7 +126,12 @@
     "endDate": "Fim",
     "createdFrom": "Criado com o modelo ISO 19650 e as convenções de nomenclatura base.",
     "codeTaken": "Já existe um projeto com esse código",
-    "codeInvalid": "Use 2 a 10 letras ou dígitos, sem espaços"
+    "codeInvalid": "Use 2 a 10 letras ou dígitos, sem espaços",
+    "visibility": "Visibilidade na organização",
+    "visibilityORGANISATION": "Toda a organização",
+    "visibilityMEMBERS_ONLY": "Apenas a equipa do projeto",
+    "visibilityHint": "Os convidados externos e a equipa do projeto entram sempre; isto decide se o resto da sua organização também.",
+    "noOrganisation": "Ainda não tem organização. Crie uma para poder criar projetos próprios."
   },
   "projectStatus": {
     "PLANNING": "Em planeamento",
@@ -168,7 +185,24 @@
     "softwareVersion": "Versão",
     "nativeFormat": "Formato nativo",
     "exchangeFormat": "Formato de intercâmbio",
-    "purpose": "Utilização"
+    "purpose": "Utilização",
+    "invite": "Convidar para o projeto",
+    "inviteHint": "Pode convidar pessoas de outras empresas: entram apenas neste projeto e não veem o resto da sua organização.",
+    "inviteEmail": "Correio da pessoa",
+    "pendingInvitations": "Convites pendentes",
+    "noPendingInvitations": "Não há convites pendentes.",
+    "invitedOn": "Convidado a {date}",
+    "revoke": "Anular",
+    "addedDirectly": "Adicionado ao projeto: já pertence à sua organização.",
+    "invitationSent": "Convite enviado por correio.",
+    "invitationCreated": "Convite criado. Não há correio configurado, por isso passe esta ligação você mesmo:",
+    "copyLink": "Copiar ligação",
+    "alreadyInvited": "Essa pessoa já tem um convite pendente.",
+    "invalidEmail": "Correio eletrónico inválido.",
+    "notAllowed": "Não tem permissão para gerir a equipa.",
+    "external": "Externo",
+    "externalHint": "Participa neste projeto sem pertencer à organização.",
+    "newLink": "Nova ligação"
   },
   "projectRole": {
     "INFORMATION_MANAGER": "Gestor da informação",
@@ -359,5 +393,27 @@
     "forbidden": "Não tem permissão para fazer isto.",
     "unexpected": "Ocorreu um erro inesperado.",
     "goHome": "Ir para o início"
+  },
+  "invite": {
+    "title": "Convite para o projeto",
+    "subtitle": "{inviter} convida-o a colaborar neste projeto.",
+    "accept": "Aceitar convite",
+    "accepted": "Já faz parte do projeto.",
+    "goToProject": "Ir para o projeto",
+    "signInFirst": "Inicie sessão ou crie a sua conta para aceitar o convite.",
+    "signInToAccept": "Entrar e aceitar",
+    "createAccountToAccept": "Criar conta e aceitar",
+    "invitedEmail": "Convite enviado para {email}",
+    "wrongAccount": "Este convite é para {email} e iniciou sessão com outra conta. Termine a sessão e volte com a conta correta.",
+    "invalid": "Este convite não é válido ou foi anulado.",
+    "expired": "Este convite expirou. Peça um novo.",
+    "alreadyAccepted": "Este convite já foi usado.",
+    "expiresOn": "Expira a {date}",
+    "onlyThisProject": "Ao aceitar entra apenas neste projeto. Não passa a integrar {org} nem vê os seus outros projetos.",
+    "emailSubject": "Convite para o projeto {project}",
+    "emailHeading": "Foi convidado para um projeto BIM",
+    "emailBody": "{inviter} convida-o a colaborar em {project}. Aceite o convite para aceder ao protocolo do projeto.",
+    "emailIgnore": "Se não estava à espera deste convite, pode ignorar esta mensagem.",
+    "emailExpires": "A ligação expira em {days} dias."
   }
 }

@@ -127,6 +127,32 @@ async function seedDemo() {
     users.set(person.email, user.id)
   }
 
+  // Belong to the organisation but not to the project, so the difference
+  // between organisation membership and project membership is visible in the
+  // demo — and testable without one case disturbing another.
+  const colleagues = [
+    { email: 'interna@demo.test', name: 'Marta Ruiz', jobTitle: 'Administración' },
+    { email: 'observadora@demo.test', name: 'Lucía Vega', jobTitle: 'Dirección técnica' },
+  ]
+  for (const colleague of colleagues) {
+    const user = await prisma.user.upsert({
+      where: { email: colleague.email },
+      update: { name: colleague.name, passwordHash, locale: 'ES' },
+      create: {
+        email: colleague.email,
+        name: colleague.name,
+        passwordHash,
+        locale: 'ES',
+        jobTitle: colleague.jobTitle,
+      },
+    })
+    await prisma.membership.upsert({
+      where: { userId_orgId: { userId: user.id, orgId: org.id } },
+      update: { role: 'MEMBER' },
+      create: { userId: user.id, orgId: org.id, role: 'MEMBER' },
+    })
+  }
+
   const ana = users.get('ana@demo.test')!
   const disciplines = new Map(
     (await prisma.discipline.findMany()).map((discipline) => [discipline.code, discipline.id]),
@@ -382,7 +408,9 @@ async function seedDemo() {
   })
 
   console.log(`  demo project: ${project.code} — ${project.name}`)
-  console.log(`  users: ${people.map((person) => person.email).join(', ')} (password: ${DEMO_PASSWORD})`)
+  console.log(
+    `  users: ${[...people.map((person) => person.email), ...colleagues.map((c) => c.email)].join(', ')} (password: ${DEMO_PASSWORD})`,
+  )
 }
 
 async function main() {

@@ -5,7 +5,6 @@ import { localized } from '@/lib/localized'
 import { prisma } from '@/lib/prisma'
 import { requireProjectAccess } from '@/server/authz'
 import {
-  addMemberAction,
   addPartyAction,
   addSoftwareAction,
   removeMemberAction,
@@ -13,7 +12,14 @@ import {
   saveRaciAction,
   type TeamActionState,
 } from '@/server/team/actions'
-import { AddMemberForm, AddPartyForm, AddSoftwareForm, RaciMatrix } from './TeamForms'
+import {
+  inviteToProjectAction,
+  regenerateInvitationLinkAction,
+  revokeInvitationAction,
+  type InviteState,
+} from '@/server/team/invitations'
+import { PendingInvitations } from './PendingInvitations'
+import { AddPartyForm, AddSoftwareForm, InviteForm, RaciMatrix } from './TeamForms'
 
 const PARTY_TONE = {
   APPOINTING: 'brand',
@@ -35,7 +41,7 @@ export default async function TeamPage({
   const partyLabels = await getTranslations({ locale, namespace: 'partyType' })
   const common = await getTranslations({ locale, namespace: 'common' })
 
-  const [members, parties, disciplines, software, activities] = await Promise.all([
+  const [members, parties, disciplines, software, activities, invitations] = await Promise.all([
     prisma.projectMember.findMany({
       where: { projectId },
       include: { user: true, discipline: true, party: true, team: true },
@@ -57,9 +63,25 @@ export default async function TeamPage({
       include: { assignments: true },
       orderBy: { order: 'asc' },
     }),
+    prisma.projectInvitation.findMany({
+      where: { projectId, acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+      include: { invitedBy: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
   ])
 
   const canManage = access.can('team:manage')
+
+  // Who on the team belongs to the owning organisation: everyone else is here
+  // through a project invitation and sees nothing beyond this project.
+  const orgMemberIds = new Set(
+    (
+      await prisma.membership.findMany({
+        where: { orgId: access.project.orgId, userId: { in: members.map((m) => m.userId) } },
+        select: { userId: true },
+      })
+    ).map((membership) => membership.userId),
+  )
 
   const disciplineOptions = disciplines.map((discipline) => ({
     id: discipline.id,
@@ -75,9 +97,9 @@ export default async function TeamPage({
     }
   }
 
-  async function addMember(state: TeamActionState, formData: FormData) {
+  async function invite(state: InviteState, formData: FormData) {
     'use server'
-    return addMemberAction(appLocale, projectId, state, formData)
+    return inviteToProjectAction(appLocale, projectId, state, formData)
   }
   async function addParty(state: TeamActionState, formData: FormData) {
     'use server'
@@ -163,6 +185,11 @@ export default async function TeamPage({
                     <td>
                       <span className="font-medium">{member.user.name}</span>
                       <span className="muted ml-2 text-xs">{member.user.email}</span>
+                      {!orgMemberIds.has(member.userId) ? (
+                        <Badge tone="slate" title={t('externalHint')}>
+                          {t('external')}
+                        </Badge>
+                      ) : null}
                     </td>
                     <td className="text-sm">{roleLabels(member.role)}</td>
                     <td className="text-sm">
@@ -192,19 +219,45 @@ export default async function TeamPage({
           </div>
         )}
 
-        {canManage ? (
-          <details className="mt-5">
-            <summary className="cursor-pointer text-sm font-medium">{t('addMember')}</summary>
-            <div className="mt-4 rounded-lg border border-[color:var(--border)] p-4">
-              <AddMemberForm
-                action={addMember}
-                disciplines={disciplineOptions}
-                parties={parties.map((party) => ({ id: party.id, label: party.name }))}
-              />
-            </div>
-          </details>
-        ) : null}
       </SectionCard>
+
+      {canManage ? (
+        <SectionCard title={t('invite')} description={t('inviteHint')}>
+          <InviteForm
+            action={invite}
+            disciplines={disciplineOptions}
+            parties={parties.map((party) => ({ id: party.id, label: party.name }))}
+          />
+        </SectionCard>
+      ) : null}
+
+      {canManage ? (
+        <SectionCard title={t('pendingInvitations')}>
+          {invitations.length === 0 ? (
+            <EmptyState>{t('noPendingInvitations')}</EmptyState>
+          ) : (
+            <PendingInvitations
+              invitations={invitations.map((invitation) => ({
+                id: invitation.id,
+                email: invitation.email,
+                roleLabel: roleLabels(invitation.role),
+                invitedBy: invitation.invitedBy.name,
+                createdAt: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(
+                  invitation.createdAt,
+                ),
+              }))}
+              onRegenerate={async (invitationId: string) => {
+                'use server'
+                return regenerateInvitationLinkAction(appLocale, projectId, invitationId)
+              }}
+              onRevoke={async (invitationId: string) => {
+                'use server'
+                await revokeInvitationAction(appLocale, projectId, invitationId)
+              }}
+            />
+          )}
+        </SectionCard>
+      ) : null}
 
       <SectionCard title={t('raci')} description={t('raciHint')}>
         {activities.length === 0 ? (

@@ -17,6 +17,7 @@ export function SettingsForm({
     name: string
     description: string | null
     status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'CLOSED'
+    visibility: 'ORGANISATION' | 'MEMBERS_ONLY'
     country: string | null
     city: string | null
     address: string | null
@@ -119,6 +120,26 @@ export function SettingsForm({
             className="field"
           />
         </div>
+      </div>
+
+      <div className="max-w-md">
+        <label className="label" htmlFor="settings-visibility">
+          {t('visibility')}
+        </label>
+        <select
+          id="settings-visibility"
+          name="visibility"
+          defaultValue={project.visibility}
+          disabled={readOnly}
+          className="field"
+        >
+          {(['ORGANISATION', 'MEMBERS_ONLY'] as const).map((value) => (
+            <option key={value} value={value}>
+              {t(`visibility${value}`)}
+            </option>
+          ))}
+        </select>
+        <p className="muted mt-1 text-xs">{t('visibilityHint')}</p>
       </div>
 
       <fieldset className="rounded-lg border border-[color:var(--border)] p-4">

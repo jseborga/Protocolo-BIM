@@ -3,9 +3,10 @@
 import { headers } from 'next/headers'
 import { z } from 'zod'
 import { redirect } from '@/i18n/navigation'
-import { appLocaleToDb, type AppLocale } from '@/i18n/routing'
+import { appLocaleToDb, type AppLocale } from '@/i18n/locales'
 import { prisma } from '@/lib/prisma'
 import { createSession, destroySession, hashPassword, verifyPassword } from '@/server/auth'
+import { safeNextPath } from '@/server/auth/redirects'
 
 export interface AuthFormState {
   /** Translation key under the `auth` namespace. */
@@ -19,7 +20,9 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   name: z.string().trim().min(2),
-  orgName: z.string().trim().min(2),
+  // Optional: somebody arriving through a project invitation has no company of
+  // their own to register, and should not be forced to invent one.
+  orgName: z.union([z.string().trim().min(2), z.literal('')]),
   email: z.string().email(),
   password: z.string().min(8),
 })
@@ -49,6 +52,7 @@ export async function loginAction(
   _previous: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
+  const next = safeNextPath(String(formData.get('next') ?? ''), '/projects')
   const parsed = loginSchema.safeParse({
     email: String(formData.get('email') ?? '').trim().toLowerCase(),
     password: String(formData.get('password') ?? ''),
@@ -60,10 +64,14 @@ export async function loginAction(
   // take the same amount of time.
   const placeholder = '$2a$10$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidinv'
   const ok = await verifyPassword(parsed.data.password, user?.passwordHash ?? placeholder)
+
+  // An account that only ever signed in through a provider has no password to
+  // check; say so rather than leaving the person guessing.
+  if (user?.isActive && !user.passwordHash) return { error: 'noPassword' }
   if (!user || !ok || !user.isActive) return { error: 'invalidCredentials' }
 
   await createSession(user.id, await requestMeta())
-  redirect({ href: '/projects', locale })
+  redirect({ href: next, locale })
   // `redirect` throws; this satisfies the declared return type.
   return {}
 }
@@ -73,6 +81,7 @@ export async function registerAction(
   _previous: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
+  const next = safeNextPath(String(formData.get('next') ?? ''), '/projects')
   const raw = {
     name: String(formData.get('name') ?? ''),
     orgName: String(formData.get('orgName') ?? ''),
@@ -94,16 +103,30 @@ export async function registerAction(
   if (existing) return { error: 'emailTaken' }
 
   const passwordHash = await hashPassword(parsed.data.password)
-
-  // A unique slug per organisation; suffix only when the obvious one is taken.
-  let slug = slugify(parsed.data.orgName)
-  for (let attempt = 1; await prisma.organization.findUnique({ where: { slug } }); attempt += 1) {
-    slug = `${slugify(parsed.data.orgName)}-${attempt}`
-  }
+  const orgName = parsed.data.orgName.trim()
 
   const user = await prisma.$transaction(async (tx) => {
+    if (!orgName) {
+      // A personal account. It can be invited to any project; creating projects
+      // of its own needs an organisation, offered later.
+      return tx.user.create({
+        data: {
+          email: parsed.data.email,
+          name: parsed.data.name,
+          passwordHash,
+          locale: appLocaleToDb[locale],
+        },
+      })
+    }
+
+    // A unique slug per organisation; suffix only when the obvious one is taken.
+    let slug = slugify(orgName)
+    for (let attempt = 1; await tx.organization.findUnique({ where: { slug } }); attempt += 1) {
+      slug = `${slugify(orgName)}-${attempt}`
+    }
+
     const org = await tx.organization.create({
-      data: { slug, name: parsed.data.orgName, defaultLocale: appLocaleToDb[locale] },
+      data: { slug, name: orgName, defaultLocale: appLocaleToDb[locale] },
     })
     return tx.user.create({
       data: {
@@ -117,7 +140,7 @@ export async function registerAction(
   })
 
   await createSession(user.id, await requestMeta())
-  redirect({ href: '/projects', locale })
+  redirect({ href: next, locale })
   // `redirect` throws; this satisfies the declared return type.
   return {}
 }

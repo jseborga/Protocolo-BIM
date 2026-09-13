@@ -53,16 +53,26 @@ Alameda`) and four users, all with the password `demo1234`:
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `AUTH_SECRET` | 32+ character secret for session signing |
-| `NEXT_PUBLIC_APP_URL` | Public base URL |
+| `APP_URL` | Public base URL. Read at run time, so a hosting panel can set it without rebuilding; the OAuth redirect URI and invitation links are built from it |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional. Enables "Continue with Google" — see [`docs/AUTH-PROVIDERS.md`](docs/AUTH-PROVIDERS.md) |
+| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | Optional. Enables "Continue with Microsoft"; `MICROSOFT_TENANT_ID` restricts it to one directory |
+| `RESEND_API_KEY` or `SMTP_URL` | Optional. Delivers invitations by email. Without them the link is shown to pass on by hand |
 | `CHROMIUM_EXECUTABLE_PATH` | Optional. Use a Chromium already on the host for PDF export instead of the one Playwright downloads |
 
 ---
 
 ## What is in phase 1
 
-- **Organisations, projects and teams.** Multi-tenant organisations, projects
-  with client and appointment-party data, disciplines, discipline teams, the
-  ISO 19650 project roles and an editable RACI matrix.
+- **Accounts that span companies.** An account is personal and global, and
+  project membership is the unit of access: an appointed party from another
+  firm is invited to one project, joins it without entering the owning
+  organisation, and sees nothing else of it. Sign-in is by password, Google or
+  Microsoft, all reaching the same account.
+- **Organisations, projects and teams.** Organisations own projects and hold
+  billing and branding, with per-project visibility deciding whether the rest
+  of the company can look in. Projects carry client and appointment-party data,
+  disciplines, discipline teams, the ISO 19650 project roles and an editable
+  RACI matrix.
 - **The protocol.** 27 ISO 19650 sections in three languages, Markdown prose
   per language, section comments, the draft → review → approved → superseded
   workflow, and a line-level diff between versions.
@@ -154,6 +164,9 @@ plus a PostgreSQL service.
 - **Easypanel**: step-by-step guide in [`docs/DEPLOY-EASYPANEL.md`](docs/DEPLOY-EASYPANEL.md).
   Use the Dockerfile build method — the autodetected Node build has no Chromium
   and the PDF export needs a real browser.
+- **Sign-in providers**: [`docs/AUTH-PROVIDERS.md`](docs/AUTH-PROVIDERS.md) covers
+  registering the application with Google and Microsoft, and how accounts are
+  joined up between them.
 - **Any Docker host**: `docker-compose.prod.yml` brings up the app and
   PostgreSQL together.
 
@@ -165,10 +178,11 @@ RAM.
 ## Testing
 
 ```bash
-npm run test           # 69 unit tests: naming engine, diff, permissions, markdown, i18n parity
-npm run test:e2e       # 18 end-to-end tests through a real browser and a real database
+npm run test           # 94 unit tests: naming engine, diff, permissions, markdown, i18n parity
+npm run test:e2e       # 28 end-to-end tests through a real browser and a real database
 npm run typecheck
 npm run verify:naming  # every stored convention still agrees with its own test cases
+npm run platform:role <email> ADMIN   # grant back-office access, from the server only
 ```
 
 `npm run test:e2e` resets the demo organisation, re-seeds it and builds the app
@@ -197,6 +211,12 @@ honest.
 - A project the user cannot access and a project that does not exist both
   answer “not found”, so the application never confirms the existence of
   another organisation's work.
+- A federated identity is attached to an existing account only when the provider
+  vouches for the address, which keeps an unverified one from claiming somebody
+  else's account.
+- An invitation link is a bearer credential: only its hash is stored, it is
+  checked against the signed-in account's address, and a lost one is replaced
+  rather than recovered.
 
 ---
 

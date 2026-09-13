@@ -51,8 +51,42 @@ describe('project abilities', () => {
     expect(canAccessProject(context)).toBe(false)
     expect(abilitiesFor(context).size).toBe(0)
   })
+})
 
-  it('lets an organisation member see a project they are not assigned to', () => {
+describe('reaching a project', () => {
+  it('lets a project member in with no organisation at all', () => {
+    // An appointed party from another company: this is what makes a delivery
+    // team able to span companies.
+    expect(canAccessProject({ orgRole: null, projectRole: 'BIM_COORDINATOR' })).toBe(true)
+  })
+
+  it('gives that outside member only their project role', () => {
+    const abilities = abilitiesFor({ orgRole: null, projectRole: 'BIM_MODELLER' })
+    expect([...abilities].sort()).toEqual(['comment:create', 'project:view'])
+  })
+
+  it('lets a colleague see a project left open to the organisation', () => {
+    expect(
+      canAccessProject({ orgRole: 'MEMBER', projectRole: null, visibility: 'ORGANISATION' }),
+    ).toBe(true)
+  })
+
+  it('keeps a colleague out of a members-only project', () => {
+    expect(
+      canAccessProject({ orgRole: 'MEMBER', projectRole: null, visibility: 'MEMBERS_ONLY' }),
+    ).toBe(false)
+  })
+
+  it('still admits the organisation owner and admin to a members-only project', () => {
+    expect(
+      canAccessProject({ orgRole: 'OWNER', projectRole: null, visibility: 'MEMBERS_ONLY' }),
+    ).toBe(true)
+    expect(
+      canAccessProject({ orgRole: 'ADMIN', projectRole: null, visibility: 'MEMBERS_ONLY' }),
+    ).toBe(true)
+  })
+
+  it('treats an unspecified visibility as open to the organisation', () => {
     expect(canAccessProject({ orgRole: 'MEMBER', projectRole: null })).toBe(true)
   })
 })
