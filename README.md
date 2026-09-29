@@ -87,9 +87,16 @@ Alameda`) and four users, all with the password `demo1234`:
   coverage per language. Generated sections count towards neither gauge —
   there is no prose to write and nothing to translate.
 
-Phase 2 and 3 surfaces (CDE folders, shared parameters, LOIN, TIDP/MIDP,
-model audits) already exist in the data model and are marked in the interface;
-their screens land with the Revit add-in.
+- **API keys and `/api/v1`.** Each project issues its own API keys (hashed,
+  scoped, revocable, optionally expiring) so external tools can download the
+  project standard — naming conventions, shared parameters with fixed GUIDs,
+  worksets, project information — and the Revit shared parameter file, check
+  names, and submit model audits that the server judges with the same naming
+  engine. Results appear under *Quality*.
+
+Other phase 2 and 3 surfaces (CDE folders, LOIN, TIDP/MIDP) already exist in
+the data model and are marked in the interface. The Revit add-in that will
+use the API is planned separately.
 
 ---
 
@@ -169,6 +176,9 @@ plus a PostgreSQL service.
   joined up between them.
 - **Any Docker host**: `docker-compose.prod.yml` brings up the app and
   PostgreSQL together.
+- **Connecting other tools**: [`docs/API.md`](docs/API.md) walks through
+  creating a project API key and calling `/api/v1` from PowerShell or curl.
+  The OpenAPI 3.1 contract is served at `/api/v1/openapi.json`.
 
 The image is around 1.6 GB, mostly Chromium. Building it needs roughly 2 GB of
 RAM.
@@ -227,8 +237,8 @@ CDE folder tree with WIP/Shared/Published/Archived states, downloadable as a ZIP
 or a script · shared parameter library with GUIDs, exportable as a Revit shared
 parameter file and mapped to IFC Psets · LOIN per element category and milestone
 (EN 17412-1) · milestones, TIDP per appointed party and the aggregated MIDP ·
-per-project API tokens · `/api/v1` ruleset and audit endpoints · **the Revit
-add-in** (C# source, Revit 2022–2026) that downloads the ruleset, audits
+per-project API keys and the `/api/v1` standard and audit endpoints (done) ·
+**the Revit add-in** (C#, Revit 2026) that downloads the standard, audits
 families, types, sheets, views, worksets, levels and parameters, and publishes
 its findings back to the project.
 
