@@ -318,3 +318,174 @@ export const RACI_ACTIVITY_SEEDS = [
   { key: 'CDE_PUBLICATION', order: 7, labels: t('Publicar en el CDE', 'Publish to the CDE', 'Publicar no CDE') },
   { key: 'DELIVERY_APPROVAL', order: 8, labels: t('Aprobar la entrega de información', 'Approve the information delivery', 'Aprovar a entrega de informação') },
 ]
+
+/** Model categories the identification parameters are bound to. */
+const MODEL_CATEGORIES = [
+  'OST_Walls',
+  'OST_Doors',
+  'OST_Windows',
+  'OST_Floors',
+  'OST_Roofs',
+  'OST_Ceilings',
+  'OST_Stairs',
+  'OST_StairsRailing',
+  'OST_CurtainWallPanels',
+  'OST_StructuralColumns',
+  'OST_StructuralFraming',
+  'OST_StructuralFoundation',
+  'OST_MechanicalEquipment',
+  'OST_PlumbingFixtures',
+  'OST_ElectricalEquipment',
+  'OST_LightingFixtures',
+  'OST_Furniture',
+  'OST_GenericModel',
+]
+
+export interface SharedParameterSeed {
+  /**
+   * Fixed on purpose: every project provisioned by the platform carries the
+   * same GUID for the same baseline parameter, so a family tagged in one
+   * project is recognised in the next. A random GUID per project would defeat
+   * the whole point of a shared parameter.
+   */
+  guid: string
+  name: string
+  group: LocalizedText
+  dataType: string
+  paletteGroup: string
+  isInstance: boolean
+  required: boolean
+  categories: string[]
+  ifcPset: string
+  ifcProperty: string
+  description: LocalizedText
+}
+
+export const SHARED_PARAMETER_SEEDS: SharedParameterSeed[] = [
+  {
+    guid: 'fc784e56-af94-41fe-8358-65ef033a949b',
+    name: 'GEN_CodigoClasificacion',
+    group: t('Identificación', 'Identification', 'Identificação'),
+    dataType: 'TEXT',
+    paletteGroup: 'IDENTITY_DATA',
+    isInstance: false,
+    required: true,
+    categories: MODEL_CATEGORIES,
+    ifcPset: 'Pset_ProtocoloBIM',
+    ifcProperty: 'ClassificationCode',
+    description: t(
+      'Código del sistema de clasificación adoptado en el protocolo (Uniclass, OmniClass…).',
+      'Code from the classification system the protocol adopts (Uniclass, OmniClass…).',
+      'Código do sistema de classificação adotado no protocolo (Uniclass, OmniClass…).',
+    ),
+  },
+  {
+    guid: '7668ad9f-7aa3-47a1-ad54-32c4d1626dbd',
+    name: 'GEN_Originador',
+    group: t('Identificación', 'Identification', 'Identificação'),
+    dataType: 'TEXT',
+    paletteGroup: 'IDENTITY_DATA',
+    isInstance: true,
+    required: true,
+    categories: MODEL_CATEGORIES,
+    ifcPset: 'Pset_ProtocoloBIM',
+    ifcProperty: 'Originator',
+    description: t(
+      'Código de la parte designada responsable del elemento, de la tabla de originadores.',
+      'Code of the appointed party responsible for the element, from the originator table.',
+      'Código da parte designada responsável pelo elemento, da tabela de originadores.',
+    ),
+  },
+  {
+    guid: '9e53249a-c708-46d2-99fd-ad058dd4bbf0',
+    name: 'GEN_Volumen',
+    group: t('Identificación', 'Identification', 'Identificação'),
+    dataType: 'TEXT',
+    paletteGroup: 'IDENTITY_DATA',
+    isInstance: true,
+    required: false,
+    categories: MODEL_CATEGORIES,
+    ifcPset: 'Pset_ProtocoloBIM',
+    ifcProperty: 'Volume',
+    description: t(
+      'Volumen o sistema al que pertenece el elemento, de la tabla de volúmenes.',
+      'Volume or system the element belongs to, from the volume table.',
+      'Volume ou sistema a que pertence o elemento, da tabela de volumes.',
+    ),
+  },
+  {
+    guid: 'f025fad4-3929-4c6f-96eb-79b73073c4ee',
+    name: 'GEN_EstadoCDE',
+    group: t('Gestión de la información', 'Information management', 'Gestão da informação'),
+    dataType: 'TEXT',
+    paletteGroup: 'IDENTITY_DATA',
+    isInstance: true,
+    required: true,
+    categories: ['OST_Sheets'],
+    ifcPset: 'Pset_ProtocoloBIM',
+    ifcProperty: 'CDEStatus',
+    description: t(
+      'Código de estado del CDE del plano (S0, S1, A1…), de la tabla de estados.',
+      'CDE status code of the sheet (S0, S1, A1…), from the status table.',
+      'Código de estado do CDE da folha (S0, S1, A1…), da tabela de estados.',
+    ),
+  },
+  {
+    guid: '747a9036-82f3-4900-899a-f7454696d88d',
+    name: 'GEN_CodigoActivo',
+    group: t('Operación', 'Operation', 'Operação'),
+    dataType: 'TEXT',
+    paletteGroup: 'DATA',
+    isInstance: true,
+    required: false,
+    categories: [
+      'OST_MechanicalEquipment',
+      'OST_PlumbingFixtures',
+      'OST_ElectricalEquipment',
+      'OST_LightingFixtures',
+      'OST_FireAlarmDevices',
+    ],
+    ifcPset: 'Pset_ProtocoloBIM',
+    ifcProperty: 'AssetCode',
+    description: t(
+      'Referencia del activo para el mantenimiento del edificio.',
+      'Asset reference for building maintenance.',
+      'Referência do ativo para a manutenção do edifício.',
+    ),
+  },
+]
+
+export interface WorksetSeed {
+  name: string
+  discipline: string
+  description: LocalizedText
+}
+
+/** Baseline worksets; each name follows the WORKSET convention above. */
+export const WORKSET_SEEDS: WorksetSeed[] = [
+  {
+    name: 'GEN_Niveles y rejillas',
+    discipline: 'GEN',
+    description: t('Niveles y rejillas compartidos por todas las disciplinas.', 'Levels and grids shared by every discipline.', 'Níveis e grelhas partilhados por todas as disciplinas.'),
+  },
+  {
+    name: 'GEN_Vinculos',
+    discipline: 'GEN',
+    description: t('Modelos vinculados de otras disciplinas.', 'Models linked from other disciplines.', 'Modelos ligados de outras disciplinas.'),
+  },
+  {
+    name: 'ARC_General',
+    discipline: 'ARC',
+    description: t('Elementos de arquitectura.', 'Architectural elements.', 'Elementos de arquitetura.'),
+  },
+  {
+    name: 'STR_General',
+    discipline: 'STR',
+    description: t('Elementos estructurales.', 'Structural elements.', 'Elementos estruturais.'),
+  },
+  {
+    name: 'MEP_General',
+    discipline: 'MEP',
+    description: t('Elementos de instalaciones.', 'Building services elements.', 'Elementos de instalações.'),
+  },
+]

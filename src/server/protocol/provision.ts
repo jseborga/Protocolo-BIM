@@ -5,6 +5,8 @@ import {
   CODE_TABLE_SEEDS,
   NAMING_CONVENTION_SEEDS,
   RACI_ACTIVITY_SEEDS,
+  SHARED_PARAMETER_SEEDS,
+  WORKSET_SEEDS,
 } from './baseline'
 import { ISO19650_TEMPLATE } from './template'
 
@@ -133,6 +135,57 @@ export async function provisionProject(
         key: activity.key,
         order: activity.order,
         labels: activity.labels as Prisma.InputJsonValue,
+      },
+    })
+  }
+
+  // --- Revit standard: shared parameters and worksets ---------------------
+  const groupIdByName = new Map<string, string>()
+  const baseGroupName = (text: LocalizedText) => pick(text, baseLocale, text.es ?? '')
+
+  for (const seed of SHARED_PARAMETER_SEEDS) {
+    const groupName = baseGroupName(seed.group)
+    let groupId = groupIdByName.get(groupName)
+    if (!groupId) {
+      const group = await tx.parameterGroupDef.create({
+        data: { projectId, name: groupName, order: groupIdByName.size },
+      })
+      groupId = group.id
+      groupIdByName.set(groupName, groupId)
+    }
+
+    await tx.sharedParameterDef.create({
+      data: {
+        projectId,
+        groupId,
+        guid: seed.guid,
+        name: seed.name,
+        dataType: seed.dataType,
+        paletteGroup: seed.paletteGroup,
+        isInstance: seed.isInstance,
+        required: seed.required,
+        categories: seed.categories,
+        ifcPset: seed.ifcPset,
+        ifcProperty: seed.ifcProperty,
+        description: seed.description as Prisma.InputJsonValue,
+      },
+    })
+  }
+
+  const disciplineIdByCode = new Map(
+    (await tx.discipline.findMany({ select: { id: true, code: true } })).map((discipline) => [
+      discipline.code,
+      discipline.id,
+    ]),
+  )
+  for (const [index, seed] of WORKSET_SEEDS.entries()) {
+    await tx.worksetDef.create({
+      data: {
+        projectId,
+        name: seed.name,
+        disciplineId: disciplineIdByCode.get(seed.discipline) ?? null,
+        description: pick(seed.description, baseLocale, ''),
+        order: index,
       },
     })
   }

@@ -317,6 +317,7 @@ model Project {
   apiTokens           ApiToken[]
   auditLogs           AuditLog[]
   invitations         ProjectInvitation[]
+  worksets            WorksetDef[]
 
   @@unique([orgId, code])
   @@index([orgId])
@@ -408,6 +409,7 @@ model Discipline {
   elementRequirements ElementRequirement[]
   sharedParameters    SharedParameterDef[]
   projectInvitations  ProjectInvitation[]
+  worksets            WorksetDef[]
 }
 
 model Team {
@@ -800,6 +802,8 @@ model SharedParameterDef {
   name         String
   dataType     String   @default("TEXT")
   isInstance   Boolean  @default(true)
+  /// Where it shows in the Properties palette; see REVIT_PALETTE_GROUPS.
+  paletteGroup String   @default("IDENTITY_DATA")
   categories   String[] @default([])
   ifcPset      String?
   ifcProperty  String?
@@ -810,6 +814,25 @@ model SharedParameterDef {
   project    Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   group      ParameterGroupDef? @relation(fields: [groupId], references: [id])
   discipline Discipline?        @relation(fields: [disciplineId], references: [id])
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+/// A user workset every model of the project is expected to have. The Revit
+/// add-in creates the missing ones in a workshared model and reports them
+/// when auditing.
+model WorksetDef {
+  id           String   @id @default(cuid())
+  projectId    String
+  name         String
+  disciplineId String?
+  description  String?
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  discipline Discipline? @relation(fields: [disciplineId], references: [id])
 
   @@unique([projectId, name])
   @@index([projectId])
@@ -846,6 +869,8 @@ model RuleSet {
   id            String   @id @default(cuid())
   projectId     String
   version       Int
+  /// SHA-256 of the canonical payload; a new version is cut only when it changes.
+  hash          String   @default("")
   payload       Json
   publishedAt   DateTime @default(now())
   publishedById String?
@@ -865,13 +890,17 @@ model AuditRun {
   startedAt      DateTime    @default(now())
   finishedAt     DateTime?
   createdById    String?
+  /// The API token that submitted the run, when it came from the add-in.
+  apiTokenId     String?
   totalChecked   Int         @default(0)
   errorCount     Int         @default(0)
   warningCount   Int         @default(0)
+  infoCount      Int         @default(0)
   metadata       Json?
 
   project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdBy User?          @relation(fields: [createdById], references: [id])
+  apiToken  ApiToken?      @relation(fields: [apiTokenId], references: [id], onDelete: SetNull)
   findings  AuditFinding[]
 
   @@index([projectId, startedAt])
@@ -882,6 +911,11 @@ model AuditFinding {
   runId       String
   severity    Severity @default(ERROR)
   ruleKey     String
+  /// What was checked: a naming target (FAMILY, SHEET…), PARAMETER, WORKSET…
+  target      String?
+  /// Machine-readable reason, rendered in the reader's language with `params`.
+  code        String?
+  params      Json?
   elementId   String?
   elementName String?
   category    String?
@@ -907,8 +941,9 @@ model ApiToken {
   revokedAt   DateTime?
   createdAt   DateTime  @default(now())
 
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdBy User    @relation(fields: [createdById], references: [id])
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User       @relation(fields: [createdById], references: [id])
+  auditRuns AuditRun[]
 
   @@index([projectId])
 }

@@ -9,9 +9,9 @@ const TABS = [
   { key: 'team', segment: '/team' },
   { key: 'naming', segment: '/naming' },
   { key: 'folders', segment: '/folders', phase2: true },
-  { key: 'parameters', segment: '/parameters', phase2: true },
+  { key: 'parameters', segment: '/parameters' },
   { key: 'deliverables', segment: '/deliverables', phase2: true },
-  { key: 'quality', segment: '/quality', phase2: true },
+  { key: 'quality', segment: '/quality' },
   { key: 'settings', segment: '/settings' },
 ] as const
 
