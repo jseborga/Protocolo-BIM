@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server'
 import { dbLocaleToApp } from '@/i18n/locales'
 import { appUrl } from '@/lib/app-url'
-import { authenticateApi } from '@/server/revit/apiAuth'
+import { apiJson, authenticateApi } from '@/server/revit/apiAuth'
 import { loadStandard } from '@/server/revit/standardRepository'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +20,7 @@ export async function GET(request: Request) {
   // can show which rules it is about to use before syncing anything.
   const standard = await loadStandard(context.project.id)
 
-  return NextResponse.json(
+  return apiJson(
     {
       apiVersion: API_VERSION,
       server: 'Protocolo BIM',

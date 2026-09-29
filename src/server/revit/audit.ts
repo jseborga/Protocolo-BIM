@@ -121,7 +121,10 @@ export interface AuditSummary {
 
 export interface AuditEvaluation {
   summary: AuditSummary
+  /** Ordered by severity; naming findings capped by `maxNamingFindings`. */
   findings: Finding[]
+  /** Every finding, including those counted but not kept. */
+  findingsTotal: number
 }
 
 function emptyTarget(): TargetSummary {
@@ -186,10 +189,42 @@ export function judgeName(
   return { valid: false, convention: best!.convention, errors: best!.errors }
 }
 
-export function evaluateAudit(standard: AuditStandard, submission: AuditSubmission): AuditEvaluation {
-  const findings: Finding[] = []
+export interface EvaluateOptions {
+  /**
+   * Keep at most this many naming findings; the rest are only counted. A
+   * model can hold hundreds of thousands of badly named elements, and every
+   * finding kept is memory held for the whole request.
+   */
+  maxNamingFindings?: number
+}
+
+const SEVERITY_RANK: Record<Severity, number> = { ERROR: 0, WARNING: 1, INFO: 2 }
+
+export function evaluateAudit(
+  standard: AuditStandard,
+  submission: AuditSubmission,
+  options: EvaluateOptions = {},
+): AuditEvaluation {
+  const maxNaming = options.maxNamingFindings ?? Number.POSITIVE_INFINITY
+  // Parameter, workset and project-information findings are bounded by the
+  // size of the standard, so they are always kept, and kept apart so a flood
+  // of naming findings can never push them out.
+  const naming: Finding[] = []
+  const other: Finding[] = []
+  let total = 0
   const byTarget: Record<string, TargetSummary> = {}
   const touch = (target: string) => (byTarget[target] ??= emptyTarget())
+
+  const record = (finding: Finding) => {
+    total += 1
+    const summary = touch(finding.target)
+    if (finding.severity === 'ERROR') summary.errors += 1
+    else if (finding.severity === 'WARNING') summary.warnings += 1
+    else summary.infos += 1
+
+    if (finding.code !== 'NAMING') other.push(finding)
+    else if (naming.length < maxNaming) naming.push(finding)
+  }
 
   // --- names ---------------------------------------------------------------
   const conventionsByTarget = new Map<string, CompiledConvention[]>()
@@ -212,7 +247,7 @@ export function evaluateAudit(standard: AuditStandard, submission: AuditSubmissi
     const verdict = judgeName(conventions, item.name)
     if (verdict.valid) continue
 
-    findings.push({
+    record({
       severity: 'ERROR',
       target: item.target,
       code: 'NAMING',
@@ -252,7 +287,7 @@ export function evaluateAudit(standard: AuditStandard, submission: AuditSubmissi
         if (impostor) {
           // Same name, different GUID: schedules, tags and filters built on the
           // standard parameter silently see nothing. The classic failure.
-          findings.push({
+          record({
             severity: 'ERROR',
             target: 'PARAMETER',
             code: 'PARAMETER_GUID_MISMATCH',
@@ -261,7 +296,7 @@ export function evaluateAudit(standard: AuditStandard, submission: AuditSubmissi
             params: { name: expected.name, expectedGuid: expected.guid, actualGuid: impostor.guid },
           })
         } else {
-          findings.push({
+          record({
             severity: expected.required ? 'ERROR' : 'INFO',
             target: 'PARAMETER',
             code: expected.required ? 'PARAMETER_MISSING' : 'PARAMETER_ABSENT',
@@ -274,7 +309,7 @@ export function evaluateAudit(standard: AuditStandard, submission: AuditSubmissi
       }
 
       if (found.name !== expected.name) {
-        findings.push({
+        record({
           severity: 'WARNING',
           target: 'PARAMETER',
           code: 'PARAMETER_RENAMED',
@@ -285,7 +320,7 @@ export function evaluateAudit(standard: AuditStandard, submission: AuditSubmissi
       }
 
       if (found.categories.length === 0) {
-        findings.push({
+        record({
           severity: expected.required ? 'ERROR' : 'WARNING',
           target: 'PARAMETER',
           code: 'PARAMETER_NOT_BOUND',
@@ -299,7 +334,7 @@ export function evaluateAudit(standard: AuditStandard, submission: AuditSubmissi
       const bound = new Set(found.categories)
       const missing = expected.categories.filter((category) => !bound.has(category))
       if (missing.length > 0) {
-        findings.push({
+        record({
           severity: 'WARNING',
           target: 'PARAMETER',
           code: 'PARAMETER_BINDING_INCOMPLETE',
@@ -310,7 +345,7 @@ export function evaluateAudit(standard: AuditStandard, submission: AuditSubmissi
       }
 
       if (found.isInstance != null && found.isInstance !== expected.isInstance) {
-        findings.push({
+        record({
           severity: 'WARNING',
           target: 'PARAMETER',
           code: 'PARAMETER_BINDING_KIND',
@@ -329,20 +364,22 @@ export function evaluateAudit(standard: AuditStandard, submission: AuditSubmissi
   // --- worksets --------------------------------------------------------------
   if (standard.worksets.length > 0) {
     if (submission.model.isWorkshared === false) {
-      findings.push({
+      record({
         severity: 'INFO',
         target: 'WORKSET',
         code: 'MODEL_NOT_WORKSHARED',
         ruleKey: 'workset.worksharing',
         params: { expected: standard.worksets.length },
       })
-    } else if (submission.model.isWorkshared && submission.worksets) {
+    } else if (submission.worksets) {
+      // Checked whenever the list is sent; only an explicit "not workshared"
+      // skips it, above.
       const present = new Set(submission.worksets)
       const summary = touch('WORKSET')
       for (const name of standard.worksets) {
         summary.checked += 1
         if (present.has(name)) continue
-        findings.push({
+        record({
           severity: 'WARNING',
           target: 'WORKSET',
           code: 'WORKSET_MISSING',
@@ -365,10 +402,12 @@ export function evaluateAudit(standard: AuditStandard, submission: AuditSubmissi
     ]
     const summary = touch('PROJECT_INFO')
     for (const [field, want, got] of checks) {
-      if (!want) continue
+      // A field the client did not send is not checked; an explicit null or
+      // empty string is, since that is an empty value in the model.
+      if (!want || got === undefined) continue
       summary.checked += 1
       if ((got ?? '').trim() === want.trim()) continue
-      findings.push({
+      record({
         severity: 'WARNING',
         target: 'PROJECT_INFO',
         code: 'PROJECT_INFO_MISMATCH',
@@ -380,13 +419,6 @@ export function evaluateAudit(standard: AuditStandard, submission: AuditSubmissi
   }
 
   // --- totals ----------------------------------------------------------------
-  for (const finding of findings) {
-    const summary = touch(finding.target)
-    if (finding.severity === 'ERROR') summary.errors += 1
-    else if (finding.severity === 'WARNING') summary.warnings += 1
-    else summary.infos += 1
-  }
-
   const totals = Object.values(byTarget).reduce(
     (sum, entry) => ({
       checked: sum.checked + entry.checked,
@@ -406,6 +438,9 @@ export function evaluateAudit(standard: AuditStandard, submission: AuditSubmissi
         .map(([target]) => target)
         .sort(),
     },
-    findings,
+    // Errors first, and within a severity the model-wide findings before the
+    // per-element ones, so whatever is cut further down is the least useful.
+    findings: [...other, ...naming].sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]),
+    findingsTotal: total,
   }
 }

@@ -7,6 +7,9 @@ import type {
   ValidationResult,
 } from './types'
 
+/** Longest segment a REGEX field's pattern is ever run on. */
+export const REGEX_MAX_TESTED = 128
+
 /**
  * Split a candidate name into segments.
  *
@@ -106,6 +109,18 @@ function validateSegment(
       break
     }
     case 'REGEX': {
+      // Only run the author's pattern on a segment of sane length: a value
+      // over the field's maximum is reported below without the regex, and
+      // one field never needs more than REGEX_MAX_TESTED characters.
+      if (field.maxLength != null && value.length > field.maxLength) break
+      if (field.maxLength == null && value.length > REGEX_MAX_TESTED) {
+        errors.push({
+          ...label,
+          code: 'FIELD_TOO_LONG',
+          params: { value, max: REGEX_MAX_TESTED, actual: value.length },
+        })
+        break
+      }
       const pattern = new RegExp(`^(?:${field.regexSource.replace(/^\(\?:|\)$/g, '')})$`, 'u')
       if (!pattern.test(value)) {
         errors.push({ ...label, code: 'PATTERN_MISMATCH', params: { value } })

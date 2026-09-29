@@ -1,22 +1,14 @@
 import 'server-only'
 import { getTranslations } from 'next-intl/server'
-import { defaultLocale, locales, type AppLocale } from '@/i18n/locales'
+import { defaultLocale, type AppLocale } from '@/i18n/locales'
 import type { CompiledConvention, NamingError } from '@/server/naming'
 import type { Finding } from './audit'
 import { REVIT_CATEGORIES } from './catalog'
+import { localeForRequest } from './locale'
 
 /** `?locale=` first, then Accept-Language, then the project's own language. */
 export function pickLocale(request: Request, fallback: AppLocale = defaultLocale): AppLocale {
-  const url = new URL(request.url)
-  const explicit = url.searchParams.get('locale')
-  if (locales.includes(explicit as AppLocale)) return explicit as AppLocale
-
-  const header = request.headers.get('accept-language') ?? ''
-  for (const part of header.split(',')) {
-    const code = part.split(';')[0]!.trim().slice(0, 2).toLowerCase()
-    if (locales.includes(code as AppLocale)) return code as AppLocale
-  }
-  return fallback
+  return localeForRequest(request, fallback)
 }
 
 export interface RenderedFinding {

@@ -1,3 +1,4 @@
+import { IntlMessageFormat } from 'intl-messageformat'
 import { describe, expect, it } from 'vitest'
 import en from '../../messages/en.json'
 import es from '../../messages/es.json'
@@ -51,6 +52,24 @@ describe('translation files', () => {
           placeholders: expected,
         })
       }
+    }
+  })
+
+  it('has only messages the ICU formatter can parse', () => {
+    // A stray "<key>" reads as an unclosed tag, and next-intl then shows the
+    // message key instead of the text — silently, in production.
+    for (const [locale, messages] of Object.entries(locales)) {
+      const broken = reference.filter((key) => {
+        let node: unknown = messages
+        for (const segment of key.split('.')) node = (node as Messages)[segment]
+        try {
+          new IntlMessageFormat(String(node), locale)
+          return false
+        } catch {
+          return true
+        }
+      })
+      expect({ locale, broken }).toEqual({ locale, broken: [] })
     }
   })
 

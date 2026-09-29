@@ -2,7 +2,7 @@ import { PrismaClient, type Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { DISCIPLINE_SEED } from '../src/server/protocol/baseline'
 import { ISO19650_TEMPLATE } from '../src/server/protocol/template'
-import { provisionProject } from '../src/server/protocol/provision'
+import { provisionProject, provisionRevitBaseline } from '../src/server/protocol/provision'
 
 const prisma = new PrismaClient()
 
@@ -413,10 +413,26 @@ async function seedDemo() {
   )
 }
 
+/**
+ * Projects created before the baseline Revit standard existed get it once.
+ * The marker makes it once: a parameter somebody deletes later stays deleted.
+ */
+async function backfillRevitBaseline() {
+  const projects = await prisma.project.findMany({
+    where: { revitBaselineAt: null },
+    select: { id: true, baseLocale: true },
+  })
+  for (const project of projects) {
+    await prisma.$transaction((tx) => provisionRevitBaseline(tx, project.id, project.baseLocale))
+  }
+  if (projects.length > 0) console.log(`  baseline Revit standard added to ${projects.length} project(s)`)
+}
+
 async function main() {
   console.log('Seeding Protocolo BIM…')
   await seedDisciplines()
   await seedTemplate()
+  await backfillRevitBaseline()
 
   if (SEED_DEMO) {
     await seedDemo()

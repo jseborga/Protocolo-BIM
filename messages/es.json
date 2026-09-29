@@ -467,7 +467,7 @@
     "revoke": "Anular",
     "revoked": "Anulado",
     "expired": "Caducado",
-    "shownOnce": "Copia la clave ahora: no se volverá a mostrar. Cualquier aplicación se conecta con estos dos valores, enviando la clave en la cabecera «Authorization: Bearer <clave>» o «X-API-Key: <clave>».",
+    "shownOnce": "Copia la clave ahora: no se volverá a mostrar. Cualquier aplicación se conecta con estos dos valores, enviando la clave en la cabecera «Authorization: Bearer» seguida de la clave, o en la cabecera «X-API-Key».",
     "serverUrl": "Dirección del servidor",
     "token": "Clave de API",
     "copy": "Copiar clave",
@@ -476,14 +476,16 @@
     "invalid": "Revisa el nombre y marca al menos un permiso.",
     "testCommand": "Prueba la conexión desde PowerShell (Windows) o desde una terminal (macOS/Linux):",
     "copyCommand": "Copiar comando",
-    "apiDocs": "Especificación de la API (OpenAPI)"
+    "apiDocs": "Especificación de la API (OpenAPI)",
+    "shellPowerShell": "PowerShell (Windows)",
+    "shellCurl": "curl (macOS y Linux; en Windows, curl.exe)"
   },
   "parameters": {
     "title": "Estándar Revit",
-    "subtitle": "Parámetros compartidos y subproyectos que el complemento de Revit 2026 aplica a cada modelo y comprueba al auditarlo.",
+    "subtitle": "Parámetros compartidos y subproyectos del estándar Revit del proyecto. Se publican por la API y se comprueban en cada auditoría de modelo.",
     "downloadTxt": "Descargar archivo de parámetros compartidos",
     "library": "Parámetros compartidos",
-    "libraryHint": "El GUID identifica al parámetro en todos los modelos: no cambia aunque cambie el nombre.",
+    "libraryHint": "El GUID identifica al parámetro en todos los modelos y no cambia al editarlo.",
     "group": "Grupo",
     "dataType": "Tipo de dato",
     "paletteGroup": "Grupo en Propiedades",
@@ -498,7 +500,7 @@
     "requiredHint": "Obligatorio: la auditoría marca error si falta en el modelo",
     "add": "Añadir parámetro",
     "worksets": "Subproyectos estándar",
-    "worksetsHint": "El complemento crea los que falten en modelos compartidos. Nunca activa el trabajo compartido por su cuenta.",
+    "worksetsHint": "Subproyectos que deben existir en los modelos con trabajo compartido; la auditoría avisa de los que falten.",
     "addWorkset": "Añadir subproyecto",
     "notAllowed": "No tienes permiso para editar el estándar.",
     "invalid": "Revisa los datos del formulario.",
@@ -512,7 +514,10 @@
       "SITE": "Emplazamiento",
       "SPACES": "Espacios",
       "DOCUMENTATION": "Documentación"
-    }
+    },
+    "editTitle": "Editar «{name}»",
+    "editHint": "El nombre y el GUID ({guid}) no cambian: son los que ya llevan los modelos.",
+    "nameFixed": "Un nombre distinto sería otro parámetro: para cambiarlo, crea uno nuevo."
   },
   "quality": {
     "title": "Calidad de los modelos",
@@ -546,7 +551,10 @@
     "element": "Elemento",
     "message": "Detalle",
     "noFindings": "Nada que señalar con este filtro.",
-    "truncated": "Esta auditoría produjo {total} hallazgos; se guardan los primeros 10 000. El resumen sí los cuenta todos.",
-    "uncheckedTargets": "Sin convención activa, no se ha comprobado: {targets}. Actívala en Nomenclatura para que la próxima auditoría lo revise."
+    "truncated": "Esta auditoría produjo {total} hallazgos; se guardan los 10 000 más importantes (primero los errores). El resumen sí los cuenta todos.",
+    "uncheckedTargets": "Sin convención activa, no se ha comprobado: {targets}. Actívala en Nomenclatura para que la próxima auditoría lo revise.",
+    "showing": "{from}–{to} de {total}",
+    "previousPage": "Anterior",
+    "nextPage": "Siguiente"
   }
 }

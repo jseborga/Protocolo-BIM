@@ -211,6 +211,31 @@ describe('evaluateAudit — worksets and project information', () => {
     expect(findings.some((f) => f.code === 'WORKSET_MISSING')).toBe(false)
   })
 
+  it('checks the worksets it is sent even when the model does not say it is workshared', () => {
+    const { findings, summary } = evaluateAudit(standard, {
+      model: { title: 'x' },
+      names: [],
+      worksets: ['ARC_General'],
+    })
+    expect(findings.filter((f) => f.code === 'WORKSET_MISSING').map((f) => f.params.name)).toEqual([
+      'GEN_Niveles y rejillas',
+    ])
+    expect(summary.byTarget.WORKSET?.checked).toBe(2)
+  })
+
+  it('checks only the project information fields it is sent', () => {
+    const { findings } = evaluateAudit(standard, {
+      ...baseSubmission,
+      projectInformation: { number: 'EDI' },
+    })
+    expect(findings.filter((f) => f.code === 'PROJECT_INFO_MISMATCH')).toEqual([])
+
+    const empty = evaluateAudit(standard, { ...baseSubmission, projectInformation: { clientName: null } })
+    expect(empty.findings.filter((f) => f.code === 'PROJECT_INFO_MISMATCH').map((f) => f.params.field)).toEqual([
+      'clientName',
+    ])
+  })
+
   it('compares project information with the protocol', () => {
     const { findings } = evaluateAudit(standard, {
       ...baseSubmission,
@@ -233,5 +258,23 @@ describe('evaluateAudit — totals', () => {
     expect(summary.warnings).toBe(2) // two missing worksets
     expect(summary.infos).toBe(1) // missing optional parameter
     expect(summary.byTarget.PARAMETER).toMatchObject({ checked: 2, errors: 1, infos: 1 })
+  })
+
+  it('keeps a bounded number of naming findings but counts every one', () => {
+    const names = Array.from({ length: 50 }, (_, i) => ({ target: 'FAMILY' as const, name: `mal${i}` }))
+    const { findings, findingsTotal, summary } = evaluateAudit(
+      standard,
+      { ...baseSubmission, names, sharedParameters: [], worksets: [] },
+      { maxNamingFindings: 10 },
+    )
+    expect(summary.byTarget.FAMILY).toMatchObject({ checked: 50, errors: 50 })
+    expect(findingsTotal).toBe(50 + 1 + 1 + 2) // names + missing required + missing optional + worksets
+    expect(findings.filter((f) => f.code === 'NAMING')).toHaveLength(10)
+    // Model-wide findings survive the cap, and errors come first.
+    expect(findings.some((f) => f.code === 'PARAMETER_MISSING')).toBe(true)
+    expect(findings.some((f) => f.code === 'WORKSET_MISSING')).toBe(true)
+    const ranks = findings.map((f) => ({ ERROR: 0, WARNING: 1, INFO: 2 })[f.severity])
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b))
+    expect(findings[0]!.code).toBe('PARAMETER_MISSING')
   })
 })

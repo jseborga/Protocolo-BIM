@@ -39,12 +39,14 @@ export function ApiTokenForm({
             >
               {state.token}
             </p>
-            <CopyButton text={state.token} label={t('copy')} copiedLabel={t('copied')} />
+            {/* Keyed by the value so a new key starts with a fresh "Copy" button. */}
+            <CopyButton key={state.token} text={state.token} label={t('copy')} copiedLabel={t('copied')} />
           </div>
           <div className="space-y-2">
             <p className="label !text-amber-900 dark:!text-amber-200">{t('testCommand')}</p>
-            {testCommands(serverUrl, state.token).map((command) => (
+            {testCommands(serverUrl, state.token).map(({ shell, command }) => (
               <div key={command}>
+                <p className="text-xs font-medium">{t(shell)}</p>
                 <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded border border-amber-200 bg-white/80 p-2 font-mono text-xs dark:border-amber-900 dark:bg-black/30">
                   {command}
                 </pre>
@@ -109,11 +111,21 @@ export function ApiTokenForm({
 }
 
 /** Ready-to-paste commands that call `/api/v1/connection` with the new key. */
-function testCommands(serverUrl: string, token: string): string[] {
+function testCommands(
+  serverUrl: string,
+  token: string,
+): Array<{ shell: 'shellPowerShell' | 'shellCurl'; command: string }> {
   const url = `${serverUrl}/api/v1/connection`
   return [
-    `Invoke-RestMethod -Uri "${url}" -Headers @{ Authorization = "Bearer ${token}" }`,
-    `curl -H "Authorization: Bearer ${token}" ${url}`,
+    {
+      shell: 'shellPowerShell',
+      command: `Invoke-RestMethod -Uri "${url}" -Headers @{ Authorization = "Bearer ${token}" }`,
+    },
+    {
+      // Plain `curl` is an alias of Invoke-WebRequest in Windows PowerShell 5.1.
+      shell: 'shellCurl',
+      command: `curl -H "Authorization: Bearer ${token}" "${url}"`,
+    },
   ]
 }
 
@@ -124,8 +136,13 @@ function CopyButton({ text, label, copiedLabel }: { text: string; label: string;
       type="button"
       className="btn-secondary mt-1 text-xs"
       onClick={async () => {
-        await navigator.clipboard.writeText(text)
-        setCopied(true)
+        try {
+          await navigator.clipboard.writeText(text)
+          setCopied(true)
+        } catch {
+          // No clipboard (plain HTTP, denied permission): the text stays on
+          // screen to be selected by hand.
+        }
       }}
     >
       {copied ? copiedLabel : label}

@@ -25,6 +25,25 @@ export interface LoadedStandard {
  * convention produces exactly one more.
  */
 export async function loadStandard(projectId: string): Promise<LoadedStandard | null> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const result = await assemble(projectId, attempt === 2)
+    if (result !== STALE) return result
+  }
+  // Unreachable: the last attempt never reports STALE.
+  return null
+}
+
+const STALE = Symbol('stale')
+
+async function assemble(projectId: string, lastAttempt: boolean): Promise<LoadedStandard | null | typeof STALE> {
+  // The latest version before this snapshot is read, to tell afterwards
+  // whether somebody recorded a newer one while it was being read.
+  const before = await prisma.ruleSet.findFirst({
+    where: { projectId },
+    orderBy: { version: 'desc' },
+    select: { version: true },
+  })
+
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: { org: { select: { name: true } }, client: true },
@@ -96,7 +115,8 @@ export async function loadStandard(projectId: string): Promise<LoadedStandard | 
   })
 
   const hash = hashStandard(body)
-  const ruleSet = await ensureRuleSet(projectId, hash, body)
+  const ruleSet = await ensureRuleSet(projectId, hash, body, lastAttempt ? null : (before?.version ?? 0))
+  if (ruleSet === STALE) return STALE
 
   return {
     document: {
@@ -124,11 +144,22 @@ export async function loadStandard(projectId: string): Promise<LoadedStandard | 
   }
 }
 
+/**
+ * The version for this content: the latest one when it holds the same hash,
+ * otherwise a new one.
+ *
+ * `versionBeforeRead` guards against a stale snapshot. Without it, a request
+ * that read the rules just before an edit, and got here just after another
+ * request had recorded the edited rules, would cut a version holding the old
+ * rules on top of the new ones. When a version appeared while the snapshot
+ * was being read, the caller reads again instead.
+ */
 async function ensureRuleSet(
   projectId: string,
   hash: string,
   body: object,
-): Promise<{ version: number; publishedAt: Date }> {
+  versionBeforeRead: number | null,
+): Promise<{ version: number; publishedAt: Date } | typeof STALE> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const latest = await prisma.ruleSet.findFirst({
       where: { projectId },
@@ -136,6 +167,7 @@ async function ensureRuleSet(
       select: { version: true, hash: true, publishedAt: true },
     })
     if (latest && latest.hash === hash) return latest
+    if (latest && versionBeforeRead !== null && latest.version > versionBeforeRead) return STALE
 
     try {
       return await prisma.ruleSet.create({
@@ -149,7 +181,7 @@ async function ensureRuleSet(
       })
     } catch (error) {
       // Two requests raced to cut the same version; the loser re-reads and
-      // finds the winner's row, which holds the same content.
+      // either finds the same content or learns its snapshot is stale.
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') continue
       throw error
     }

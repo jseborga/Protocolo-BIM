@@ -7,6 +7,7 @@ import {
   WORKSET_SEEDS,
 } from '@/server/protocol/baseline'
 import {
+  REVIT_CATEGORIES,
   REVIT_CATEGORY_IDS,
   REVIT_DATA_TYPE_IDS,
   REVIT_PALETTE_GROUP_IDS,
@@ -79,6 +80,14 @@ describe('baseline Revit standard', () => {
         expect(parameter.description[locale], `${parameter.name}.${locale}`).toBeTruthy()
         expect(parameter.group[locale], `${parameter.name}.group.${locale}`).toBeTruthy()
       }
+    }
+  })
+
+  it('names every Revit category distinctly in each language, so pickers can tell them apart', () => {
+    for (const locale of ['es', 'en', 'pt'] as const) {
+      const labels = REVIT_CATEGORIES.map((category) => category.labels[locale])
+      const repeated = labels.filter((label, index) => labels.indexOf(label) !== index)
+      expect({ locale, repeated }).toEqual({ locale, repeated: [] })
     }
   })
 })

@@ -47,6 +47,8 @@ test.describe('connecting an external tool with an API key', () => {
     const key = await createKey(page, keyName, { audit: true })
 
     expect(key).toMatch(/^pbim_[A-Za-z0-9]{8}_[A-Za-z0-9_-]{32,}$/)
+    // The one-time warning renders as text, not as its message key.
+    await expect(page.getByText(/Copia la clave ahora/)).toBeVisible()
     // The screen offers ready-to-paste commands that already carry the key.
     await expect(page.locator('pre', { hasText: 'Invoke-RestMethod' })).toContainText(key)
     await expect(page.locator('pre', { hasText: 'curl' })).toContainText('/api/v1/connection')
@@ -58,6 +60,8 @@ test.describe('connecting an external tool with an API key', () => {
     for (const headers of [withKey, withBearer]) {
       const response = await request.get('/api/v1/connection', { headers })
       expect(response.status()).toBe(200)
+      // Windows PowerShell 5.1 needs the charset to decode accents.
+      expect(response.headers()['content-type']).toBe('application/json; charset=utf-8')
       const connection = connectionSchema.parse(await response.json())
       expect(connection.project.id).toBe(projectId)
       expect(connection.token.name).toBe(keyName)
@@ -90,6 +94,16 @@ test.describe('connecting an external tool with an API key', () => {
     expect(verdicts.locale).toBe('en')
     expect(verdicts.results[0]!.valid).toBe(false)
     expect(verdicts.results[0]!.messages[0]).toMatch(/segment/)
+
+    // A malformed body names the offending field in plain words.
+    const malformed = await request.post(`/api/v1/projects/${projectId}/naming/validate`, {
+      headers: withKey,
+      data: { items: [] },
+    })
+    expect(malformed.status()).toBe(422)
+    const complaint = apiErrorSchema.parse(await malformed.json()).message!
+    expect(complaint).toMatch(/^items: /)
+    expect(complaint).not.toMatch(/Invalid input$/)
 
     // An audit, then reading it back one by one and in the list.
     const modelTitle = `EDI-JSE-ZZ-XX-M3-A-${String(Date.now()).slice(-4)}`
@@ -125,6 +139,22 @@ test.describe('connecting an external tool with an API key', () => {
     // The audit is on the quality page of the project.
     await page.goto(`/es/p/${projectId}/quality`)
     await expect(page.getByText(modelTitle)).toBeVisible()
+
+    // A large audit pages its findings instead of silently cutting them.
+    const large = await request.post(`/api/v1/projects/${projectId}/audit-runs`, {
+      headers: withKey,
+      data: {
+        model: { title: `${modelTitle}-grande` },
+        names: Array.from({ length: 620 }, (_, i) => ({ target: 'SHEET', name: `Plano ${i}` })),
+      },
+    })
+    expect(large.status()).toBe(201)
+    const largeRun = auditRunCreatedSchema.parse(await large.json())
+    expect(largeRun.summary.errors).toBe(620)
+    await page.goto(`/es/p/${projectId}/quality/${largeRun.run.id}`)
+    await expect(page.getByText('1–500 de 620')).toBeVisible()
+    await page.getByRole('link', { name: 'Siguiente' }).click()
+    await expect(page.getByText('501–620 de 620')).toBeVisible()
 
     // Revoke from the settings screen: the key stops working at once.
     await page.goto(`/es/p/${projectId}/settings`)

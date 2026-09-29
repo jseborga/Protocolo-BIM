@@ -43,7 +43,7 @@ export const REVIT_CATEGORIES: RevitCategory[] = [
   { id: 'OST_DuctFitting', group: 'MEP', labels: t('Uniones de conducto', 'Duct fittings', 'Acessórios de conduta') },
   { id: 'OST_DuctTerminal', group: 'MEP', labels: t('Terminales de aire', 'Air terminals', 'Terminais de ar') },
   { id: 'OST_PipeCurves', group: 'MEP', labels: t('Tuberías', 'Pipes', 'Tubagens') },
-  { id: 'OST_PipeFitting', group: 'MEP', labels: t('Uniones de tubería', 'Pipe fittings', 'Acessórios de tubagem') },
+  { id: 'OST_PipeFitting', group: 'MEP', labels: t('Uniones de tubería', 'Pipe fittings', 'Uniões de tubagem') },
   { id: 'OST_PipeAccessory', group: 'MEP', labels: t('Accesorios de tubería', 'Pipe accessories', 'Acessórios de tubagem') },
   { id: 'OST_PlumbingFixtures', group: 'MEP', labels: t('Aparatos sanitarios', 'Plumbing fixtures', 'Loiças sanitárias') },
   { id: 'OST_Sprinklers', group: 'MEP', labels: t('Rociadores', 'Sprinklers', 'Aspersores') },

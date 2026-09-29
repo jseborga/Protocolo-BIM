@@ -278,23 +278,26 @@ model Invitation {
 // ---------------------------------------------------------------------------
 
 model Project {
-  id             String            @id @default(cuid())
-  orgId          String
-  code           String
-  name           String
-  description    String?
-  status         ProjectStatus     @default(PLANNING)
-  visibility     ProjectVisibility @default(ORGANISATION)
-  standard       String            @default("ISO_19650")
-  baseLocale     Locale            @default(ES)
-  enabledLocales Locale[]          @default([ES, EN, PT])
-  country        String?
-  city           String?
-  address        String?
-  startDate      DateTime?
-  endDate        DateTime?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id              String            @id @default(cuid())
+  orgId           String
+  code            String
+  name            String
+  description     String?
+  status          ProjectStatus     @default(PLANNING)
+  visibility      ProjectVisibility @default(ORGANISATION)
+  standard        String            @default("ISO_19650")
+  baseLocale      Locale            @default(ES)
+  enabledLocales  Locale[]          @default([ES, EN, PT])
+  country         String?
+  city            String?
+  address         String?
+  startDate       DateTime?
+  endDate         DateTime?
+  /// When the baseline shared parameters and worksets were added. Projects
+  /// created before they existed get them once, on the next start.
+  revitBaselineAt DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   org                 Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
   client              Client?

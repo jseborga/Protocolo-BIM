@@ -183,11 +183,13 @@ Qué se comprueba:
 | --- | --- |
 | `names` | Cada nombre contra las convenciones activas de su objetivo. |
 | `sharedParameters` | Que estén los obligatorios, con el GUID correcto, vinculados a sus categorías y como ejemplar/tipo según el estándar. |
-| `worksets` | Que existan los subproyectos del estándar (si el modelo es colaborativo). |
-| `projectInformation` | Nombre, número y cliente contra los datos del proyecto. |
+| `worksets` | Que existan los subproyectos del estándar. Con `model.isWorkshared = false` no se comprueban y se anota que el modelo no es colaborativo. |
+| `projectInformation` | Nombre, número y cliente contra los datos del proyecto. Solo se comprueban los campos enviados; `null` o `""` cuentan como vacíos en el modelo. |
 
 El resultado aparece en la web en **Calidad** (lista de auditorías con el
-detalle de cada hallazgo, filtrable por gravedad y objetivo).
+detalle de cada hallazgo, filtrable por gravedad y objetivo y paginado de 500
+en 500). Se guardan hasta 10 000 hallazgos por auditoría, los más importantes
+primero; el resumen cuenta siempre todos.
 
 ### Consultar auditorías
 
@@ -214,7 +216,9 @@ Invoke-RestMethod -Uri "$Server/api/v1/projects/$ProjectId/audit-runs/$($run.run
 | GET | `/api/v1/projects/{id}/audit-runs/{runId}` | `standard:read` o `audit:write` |
 
 Límites: cuerpo de hasta 25 MB (`413` si se supera), 200 000 nombres por
-auditoría, 5 000 por validación. Un cuerpo que no es JSON devuelve `400`; uno
+auditoría, 5 000 por validación. Las respuestas JSON declaran
+`charset=utf-8`, así que las tildes llegan bien también a Windows PowerShell
+5.1. Un cuerpo que no es JSON devuelve `400`; uno
 que no cumple el esquema, `422` con el campo concreto en `message`.
 
 ## 6. Seguridad

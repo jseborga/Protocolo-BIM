@@ -424,9 +424,9 @@
     "PARAMETER_RENAMED": "The parameter carrying the GUID of “{expected}” is called “{actual}” in the model.",
     "PARAMETER_NOT_BOUND": "“{name}” is loaded but not bound to any category.",
     "PARAMETER_BINDING_INCOMPLETE": "“{name}” is not bound to: {missing}.",
-    "PARAMETER_BINDING_KIND": "“{name}” should be a {expected} parameter but is a {actual} one.",
-    "instance": "instance",
-    "type": "type",
+    "PARAMETER_BINDING_KIND": "“{name}” should be {expected} parameter but is {actual} one.",
+    "instance": "an instance",
+    "type": "a type",
     "WORKSET_MISSING": "The workset “{name}” is missing.",
     "MODEL_NOT_WORKSHARED": "The model is not workshared, so it cannot hold the {expected} standard worksets.",
     "PROJECT_INFO_MISMATCH": "Project information: “{field}” is “{actual}” but the protocol says “{expected}”.",
@@ -467,7 +467,7 @@
     "revoke": "Revoke",
     "revoked": "Revoked",
     "expired": "Expired",
-    "shownOnce": "Copy the key now: it will not be shown again. Any application connects with these two values, sending the key in the \"Authorization: Bearer <key>\" or \"X-API-Key: <key>\" header.",
+    "shownOnce": "Copy the key now: it will not be shown again. Any application connects with these two values, sending the key in the \"Authorization: Bearer\" header followed by the key, or in the \"X-API-Key\" header.",
     "serverUrl": "Server address",
     "token": "API key",
     "copy": "Copy key",
@@ -476,14 +476,16 @@
     "invalid": "Check the name and tick at least one permission.",
     "testCommand": "Test the connection from PowerShell (Windows) or a terminal (macOS/Linux):",
     "copyCommand": "Copy command",
-    "apiDocs": "API specification (OpenAPI)"
+    "apiDocs": "API specification (OpenAPI)",
+    "shellPowerShell": "PowerShell (Windows)",
+    "shellCurl": "curl (macOS and Linux; on Windows, curl.exe)"
   },
   "parameters": {
     "title": "Revit standard",
-    "subtitle": "Shared parameters and worksets the Revit 2026 add-in applies to every model and checks when auditing it.",
+    "subtitle": "Shared parameters and worksets of the project’s Revit standard. They are published through the API and checked in every model audit.",
     "downloadTxt": "Download shared parameter file",
     "library": "Shared parameters",
-    "libraryHint": "The GUID identifies the parameter across every model: it does not change even if the name does.",
+    "libraryHint": "The GUID identifies the parameter in every model and does not change when it is edited.",
     "group": "Group",
     "dataType": "Data type",
     "paletteGroup": "Properties group",
@@ -498,7 +500,7 @@
     "requiredHint": "Required: the audit reports an error if it is missing from the model",
     "add": "Add parameter",
     "worksets": "Standard worksets",
-    "worksetsHint": "The add-in creates any missing ones in workshared models. It never turns worksharing on by itself.",
+    "worksetsHint": "Worksets that must exist in workshared models; the audit reports any that are missing.",
     "addWorkset": "Add workset",
     "notAllowed": "You are not allowed to edit the standard.",
     "invalid": "Check the form.",
@@ -512,7 +514,10 @@
       "SITE": "Site",
       "SPACES": "Spaces",
       "DOCUMENTATION": "Documentation"
-    }
+    },
+    "editTitle": "Edit “{name}”",
+    "editHint": "The name and the GUID ({guid}) stay as they are: models already carry them.",
+    "nameFixed": "A different name would be a different parameter: to change it, create a new one."
   },
   "quality": {
     "title": "Model quality",
@@ -546,7 +551,10 @@
     "element": "Element",
     "message": "Detail",
     "noFindings": "Nothing to report with this filter.",
-    "truncated": "This audit produced {total} findings; the first 10,000 are kept. The summary counts all of them.",
-    "uncheckedTargets": "No active convention, so not checked: {targets}. Activate one under Naming for the next audit to cover it."
+    "truncated": "This audit produced {total} findings; the 10,000 most important are kept (errors first). The summary counts all of them.",
+    "uncheckedTargets": "No active convention, so not checked: {targets}. Activate one under Naming for the next audit to cover it.",
+    "showing": "{from}–{to} of {total}",
+    "previousPage": "Previous",
+    "nextPage": "Next"
   }
 }

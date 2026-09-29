@@ -17,9 +17,9 @@ export interface RecordAuditInput {
 }
 
 export async function recordAudit(input: RecordAuditInput) {
-  const { summary, findings } = input.evaluation
+  const { summary, findings, findingsTotal } = input.evaluation
   const stored = findings.slice(0, MAX_STORED_FINDINGS)
-  const truncated = findings.length > stored.length
+  const truncated = findingsTotal > stored.length
 
   return prisma.$transaction(async (tx) => {
     const run = await tx.auditRun.create({
@@ -38,7 +38,7 @@ export async function recordAudit(input: RecordAuditInput) {
         metadata: {
           ...input.metadata,
           summary,
-          findingsTotal: findings.length,
+          findingsTotal,
           findingsStored: stored.length,
           truncated,
         } as unknown as Prisma.InputJsonValue,

@@ -7,6 +7,7 @@ import {
   type NamingConventionSpec,
   type NamingFieldSpec,
 } from './types'
+import { MAX_WIDE_QUANTIFIERS, type RegexSafetyProblem, regexSafetyProblem } from './regexSafety'
 
 /** Characters that are never acceptable inside a file or folder name. */
 export const ILLEGAL_NAME_CHARS = /[\\/:*?"<>|]/
@@ -61,6 +62,22 @@ function assertSafePattern(pattern: string, fieldKey: string): void {
       cause: (error as Error).message,
     })
   }
+  // Names reach this pattern from outside (the browser, /api/v1), so it must
+  // not be able to backtrack for minutes on a near-miss.
+  const problem = regexSafetyProblem(pattern)
+  if (problem) {
+    throw new NamingCompileError(UNSAFE_PATTERN_MESSAGES[problem](fieldKey), { fieldKey, cause: problem })
+  }
+}
+
+const UNSAFE_PATTERN_MESSAGES: Record<RegexSafetyProblem, (fieldKey: string) => string> = {
+  NESTED_REPETITION: (fieldKey) =>
+    `Pattern for field "${fieldKey}" repeats a group that already repeats or has alternatives, e.g. "([A-Z]+ ?)+"; ` +
+    'that can take exponential time on a near-miss. Write it without nested repetition, e.g. "[A-Z ]+".',
+  TOO_MANY_REPETITIONS: (fieldKey) =>
+    `Pattern for field "${fieldKey}" chains more than ${MAX_WIDE_QUANTIFIERS} open-ended repetitions (+, *, {m,}); ` +
+    'split the field or bound the repetitions.',
+  BACKREFERENCE: (fieldKey) => `Pattern for field "${fieldKey}" uses a backreference, which is not allowed.`,
 }
 
 function codesFrom(table: CodeTableSpec | null | undefined): string[] {

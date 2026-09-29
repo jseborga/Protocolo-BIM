@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { apiError, authenticateApi } from '@/server/revit/apiAuth'
+import { apiError, apiJson, authenticateApi } from '@/server/revit/apiAuth'
 import { etagFor } from '@/server/revit/standard'
 import { loadStandard } from '@/server/revit/standardRepository'
 
@@ -27,7 +27,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ proj
     return new NextResponse(null, { status: 304, headers })
   }
 
-  return NextResponse.json(document, { headers })
+  return apiJson(document, { headers })
 }
 
 /** RFC 9110 weak comparison over a list, so `W/"…"` and `a, b` forms match too. */

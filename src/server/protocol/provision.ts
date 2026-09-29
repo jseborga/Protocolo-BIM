@@ -140,55 +140,7 @@ export async function provisionProject(
   }
 
   // --- Revit standard: shared parameters and worksets ---------------------
-  const groupIdByName = new Map<string, string>()
-  const baseGroupName = (text: LocalizedText) => pick(text, baseLocale, text.es ?? '')
-
-  for (const seed of SHARED_PARAMETER_SEEDS) {
-    const groupName = baseGroupName(seed.group)
-    let groupId = groupIdByName.get(groupName)
-    if (!groupId) {
-      const group = await tx.parameterGroupDef.create({
-        data: { projectId, name: groupName, order: groupIdByName.size },
-      })
-      groupId = group.id
-      groupIdByName.set(groupName, groupId)
-    }
-
-    await tx.sharedParameterDef.create({
-      data: {
-        projectId,
-        groupId,
-        guid: seed.guid,
-        name: seed.name,
-        dataType: seed.dataType,
-        paletteGroup: seed.paletteGroup,
-        isInstance: seed.isInstance,
-        required: seed.required,
-        categories: seed.categories,
-        ifcPset: seed.ifcPset,
-        ifcProperty: seed.ifcProperty,
-        description: seed.description as Prisma.InputJsonValue,
-      },
-    })
-  }
-
-  const disciplineIdByCode = new Map(
-    (await tx.discipline.findMany({ select: { id: true, code: true } })).map((discipline) => [
-      discipline.code,
-      discipline.id,
-    ]),
-  )
-  for (const [index, seed] of WORKSET_SEEDS.entries()) {
-    await tx.worksetDef.create({
-      data: {
-        projectId,
-        name: seed.name,
-        disciplineId: disciplineIdByCode.get(seed.discipline) ?? null,
-        description: pick(seed.description, baseLocale, ''),
-        order: index,
-      },
-    })
-  }
+  await provisionRevitBaseline(tx, projectId, baseLocale)
 
   // --- Protocol v1.0 -----------------------------------------------------
   const template = await tx.protocolTemplate.findUnique({ where: { key: 'ISO_19650_BASE' } })
@@ -237,3 +189,76 @@ export async function provisionProject(
 }
 
 export { appLocaleToDb }
+
+/**
+ * Add the baseline shared parameters and worksets to a project, and mark it.
+ *
+ * Idempotent: anything already there — by name, or for a parameter by GUID —
+ * is left exactly as the project has it. That is what makes it safe to run
+ * for projects created before the baseline existed.
+ */
+export async function provisionRevitBaseline(
+  tx: Prisma.TransactionClient,
+  projectId: string,
+  baseLocale: Locale,
+): Promise<void> {
+  const [groups, parameters, worksets, disciplines] = await Promise.all([
+    tx.parameterGroupDef.findMany({ where: { projectId }, select: { id: true, name: true } }),
+    tx.sharedParameterDef.findMany({ where: { projectId }, select: { name: true, guid: true } }),
+    tx.worksetDef.findMany({ where: { projectId }, select: { name: true } }),
+    tx.discipline.findMany({ select: { id: true, code: true } }),
+  ])
+
+  const groupIdByName = new Map(groups.map((group) => [group.name, group.id]))
+  const takenNames = new Set(parameters.map((parameter) => parameter.name))
+  const takenGuids = new Set(parameters.map((parameter) => parameter.guid.toLowerCase()))
+
+  for (const seed of SHARED_PARAMETER_SEEDS) {
+    if (takenNames.has(seed.name) || takenGuids.has(seed.guid)) continue
+
+    const groupName = pick(seed.group, baseLocale, seed.group.es ?? '')
+    let groupId = groupIdByName.get(groupName)
+    if (!groupId) {
+      const group = await tx.parameterGroupDef.create({
+        data: { projectId, name: groupName, order: groupIdByName.size },
+      })
+      groupId = group.id
+      groupIdByName.set(groupName, groupId)
+    }
+
+    await tx.sharedParameterDef.create({
+      data: {
+        projectId,
+        groupId,
+        guid: seed.guid,
+        name: seed.name,
+        dataType: seed.dataType,
+        paletteGroup: seed.paletteGroup,
+        isInstance: seed.isInstance,
+        required: seed.required,
+        categories: seed.categories,
+        ifcPset: seed.ifcPset,
+        ifcProperty: seed.ifcProperty,
+        description: seed.description as Prisma.InputJsonValue,
+      },
+    })
+  }
+
+  const disciplineIdByCode = new Map(disciplines.map((discipline) => [discipline.code, discipline.id]))
+  const takenWorksets = new Set(worksets.map((workset) => workset.name))
+  let order = worksets.length
+  for (const seed of WORKSET_SEEDS) {
+    if (takenWorksets.has(seed.name)) continue
+    await tx.worksetDef.create({
+      data: {
+        projectId,
+        name: seed.name,
+        disciplineId: disciplineIdByCode.get(seed.discipline) ?? null,
+        description: pick(seed.description, baseLocale, ''),
+        order: order++,
+      },
+    })
+  }
+
+  await tx.project.update({ where: { id: projectId }, data: { revitBaselineAt: new Date() } })
+}

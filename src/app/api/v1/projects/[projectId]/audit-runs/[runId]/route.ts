@@ -1,8 +1,7 @@
-import { NextResponse } from 'next/server'
 import { dbLocaleToApp } from '@/i18n/locales'
 import { appUrl } from '@/lib/app-url'
 import { prisma } from '@/lib/prisma'
-import { apiError, authenticateApi } from '@/server/revit/apiAuth'
+import { apiError, apiJson, authenticateApi } from '@/server/revit/apiAuth'
 import { createFindingRenderer, pickLocale } from '@/server/revit/messages'
 import { loadStandard } from '@/server/revit/standardRepository'
 
@@ -28,7 +27,7 @@ export async function GET(
   const render = await createFindingRenderer(locale, loaded?.conventions ?? [])
   const metadata = (run.metadata ?? {}) as Record<string, unknown>
 
-  return NextResponse.json(
+  return apiJson(
     {
       run: {
         id: run.id,

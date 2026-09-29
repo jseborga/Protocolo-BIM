@@ -1,8 +1,7 @@
-import { NextResponse } from 'next/server'
 import { dbLocaleToApp } from '@/i18n/locales'
 import { appUrl } from '@/lib/app-url'
 import { prisma } from '@/lib/prisma'
-import { apiError, authenticateApi } from '@/server/revit/apiAuth'
+import { apiError, apiJson, authenticateApi } from '@/server/revit/apiAuth'
 import { auditSubmissionSchema } from '@/server/revit/apiSchemas'
 import { evaluateAudit } from '@/server/revit/audit'
 import { MAX_STORED_FINDINGS, recordAudit } from '@/server/revit/auditRepository'
@@ -62,7 +61,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ proj
   const page = runs.slice(0, limit)
   const locale = pickLocale(request, dbLocaleToApp[auth.context.project.baseLocale])
 
-  return NextResponse.json(
+  return apiJson(
     {
       runs: page.map((run) => ({
         id: run.id,
@@ -106,13 +105,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   if (!loaded) return apiError(404, 'not_found')
 
   const submission = parsed.data
-  const evaluation = evaluateAudit(loaded.auditStandard, {
-    model: { title: submission.model.title, isWorkshared: submission.model.isWorkshared },
-    names: submission.names,
-    sharedParameters: submission.sharedParameters,
-    worksets: submission.worksets,
-    projectInformation: submission.projectInformation,
-  })
+  const evaluation = evaluateAudit(
+    loaded.auditStandard,
+    {
+      model: { title: submission.model.title, isWorkshared: submission.model.isWorkshared },
+      names: submission.names,
+      sharedParameters: submission.sharedParameters,
+      worksets: submission.worksets,
+      projectInformation: submission.projectInformation,
+    },
+    // Only this many can be stored, so there is no point holding more.
+    { maxNamingFindings: MAX_STORED_FINDINGS },
+  )
 
   const currentVersion = loaded.document.ruleSet.version
   const { run, truncated } = await recordAudit({
@@ -136,7 +140,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   const render = await createFindingRenderer(locale, loaded.conventions)
   const returned = evaluation.findings.slice(0, MAX_RETURNED_FINDINGS)
 
-  return NextResponse.json(
+  return apiJson(
     {
       run: {
         id: run.id,
@@ -148,10 +152,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
       },
       summary: evaluation.summary,
       findings: returned.map(render),
-      findingsTotal: evaluation.findings.length,
+      findingsTotal: evaluation.findingsTotal,
       findingsReturned: returned.length,
       findingsStored: Math.min(evaluation.findings.length, MAX_STORED_FINDINGS),
-      truncated: truncated || returned.length < evaluation.findings.length,
+      truncated: truncated || returned.length < evaluation.findingsTotal,
       locale,
       webUrl: `${appUrl()}/${locale}/p/${projectId}/quality/${run.id}`,
     },

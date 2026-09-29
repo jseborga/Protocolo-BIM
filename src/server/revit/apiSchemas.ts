@@ -14,6 +14,11 @@ import { z } from 'zod/v4'
 import { AUDIT_TARGETS } from './audit'
 import { TOKEN_SCOPES } from './tokens'
 
+// zod installs its English messages as a module side effect, which the
+// production bundle drops ("sideEffects": false); without this every 422
+// would just say "Invalid input".
+z.config(z.locales.en())
+
 export const MAX_VALIDATE_ITEMS = 5000
 export const MAX_AUDIT_NAMES = 200_000
 
@@ -46,7 +51,10 @@ const optionalText = z.string().max(512).nullable().optional()
 export const auditSubmissionSchema = z.object({
   model: z.object({
     title: z.string().trim().min(1).max(260).describe('Model title, e.g. the .rvt file name without extension.'),
-    isWorkshared: z.boolean().optional(),
+    isWorkshared: z
+      .boolean()
+      .optional()
+      .describe('false skips the workset checks with one informative finding; true or omitted checks the worksets sent.'),
     revitVersion: z.string().max(40).optional(),
     revitBuild: z.string().max(80).optional(),
   }),
@@ -92,7 +100,9 @@ export const auditSubmissionSchema = z.object({
   projectInformation: z
     .object({ name: optionalText, number: optionalText, clientName: optionalText })
     .optional()
-    .describe('Project Information values in the model. Omit to skip that check.'),
+    .describe(
+      'Project Information values in the model. Only the fields sent are checked; null or "" means empty in the model.',
+    ),
 })
 
 export type NamingValidateRequest = z.infer<typeof namingValidateRequestSchema>
@@ -149,7 +159,13 @@ const conventionSchema = z.object({
   caseRule: z.string(),
   maxLength: z.number().int().nullable(),
   mask: z.string().describe('Human-readable shape, e.g. "PRJ-ORG-VOL-LVL-TYP-ROL-NUM".'),
-  pattern: z.string().describe('Anchored regular expression equivalent to the convention (ECMAScript syntax).'),
+  pattern: z
+    .string()
+    .describe(
+      'Anchored regular expression (ECMAScript, u flag) for the shape of the name: segments, separators and allowed codes. ' +
+        'It is a quick pre-check only — it does not apply the case rule, the total length, illegal characters or date ' +
+        'validity. POST /naming/validate is the authoritative check.',
+    ),
   fields: z.array(conventionFieldSchema),
 })
 

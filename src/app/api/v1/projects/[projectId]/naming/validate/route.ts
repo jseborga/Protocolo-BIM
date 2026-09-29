@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server'
 import { dbLocaleToApp } from '@/i18n/locales'
-import { apiError, authenticateApi } from '@/server/revit/apiAuth'
+import { apiError, apiJson, authenticateApi } from '@/server/revit/apiAuth'
 import { namingValidateRequestSchema } from '@/server/revit/apiSchemas'
 import { judgeName } from '@/server/revit/audit'
 import { readJsonBody } from '@/server/revit/body'
@@ -66,7 +65,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
     }
   })
 
-  return NextResponse.json(
+  return apiJson(
     { ruleSet: loaded.document.ruleSet, locale, results },
     { headers: { 'Cache-Control': 'no-store' } },
   )

@@ -12,16 +12,19 @@ import { loadStandard } from '@/server/revit/standardRepository'
 
 const SEVERITY_TONE = { ERROR: 'red', WARNING: 'amber', INFO: 'slate' } as const
 const SEVERITIES = ['ERROR', 'WARNING', 'INFO'] as const
+/** Findings per page; a run can store up to 10 000. */
+const PAGE_SIZE = 500
 
 export default async function AuditRunPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string; projectId: string; runId: string }>
-  searchParams: Promise<{ severity?: string; target?: string }>
+  searchParams: Promise<{ severity?: string; target?: string; page?: string }>
 }) {
   const { locale, projectId, runId } = await params
-  const { severity, target } = await searchParams
+  const { severity, target, page: pageParam } = await searchParams
+  const page = Math.max(1, Number.parseInt(pageParam ?? '1', 10) || 1)
   await requireProjectAccess(projectId)
   const appLocale = locale as AppLocale
 
@@ -37,12 +40,14 @@ export default async function AuditRunPage({
   }
   if (target) where.target = target
 
-  const [findings, targets, loaded] = await Promise.all([
+  const [findings, matching, targets, loaded] = await Promise.all([
     prisma.auditFinding.findMany({
       where,
-      orderBy: [{ severity: 'asc' }, { target: 'asc' }, { elementName: 'asc' }],
-      take: 2000,
+      orderBy: [{ severity: 'asc' }, { target: 'asc' }, { elementName: 'asc' }, { id: 'asc' }],
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
+    prisma.auditFinding.count({ where }),
     prisma.auditFinding.findMany({ where: { runId }, distinct: ['target'], select: { target: true } }),
     loadStandard(projectId),
   ])
@@ -59,12 +64,14 @@ export default async function AuditRunPage({
   }
   const summary = metadata.summary
 
-  const filterHref = (next: { severity?: string; target?: string }) => {
+  // Changing a filter goes back to the first page; paging keeps the filters.
+  const filterHref = (next: { severity?: string; target?: string; page?: number }) => {
     const query = new URLSearchParams()
     const s = 'severity' in next ? next.severity : severity
     const g = 'target' in next ? next.target : target
     if (s) query.set('severity', s)
     if (g) query.set('target', g)
+    if (next.page && next.page > 1) query.set('page', String(next.page))
     const text = query.toString()
     return `/p/${projectId}/quality/${runId}${text ? `?${text}` : ''}`
   }
@@ -178,6 +185,28 @@ export default async function AuditRunPage({
               </Link>
             ))}
         </div>
+
+        {matching > PAGE_SIZE ? (
+          <div className="mb-3 flex items-center gap-3 text-xs">
+            <span className="muted">
+              {t('showing', {
+                from: Math.min((page - 1) * PAGE_SIZE + 1, matching),
+                to: Math.min(page * PAGE_SIZE, matching),
+                total: matching,
+              })}
+            </span>
+            {page > 1 ? (
+              <Link href={filterHref({ page: page - 1 })} className="btn-ghost text-xs">
+                {t('previousPage')}
+              </Link>
+            ) : null}
+            {page * PAGE_SIZE < matching ? (
+              <Link href={filterHref({ page: page + 1 })} className="btn-ghost text-xs">
+                {t('nextPage')}
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
 
         {findings.length === 0 ? (
           <EmptyState>{t('noFindings')}</EmptyState>

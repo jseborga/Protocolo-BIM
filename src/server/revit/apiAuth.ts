@@ -27,9 +27,20 @@ export interface ApiContext {
 
 export type ApiAuthResult = { ok: true; context: ApiContext } | { ok: false; response: NextResponse }
 
+/**
+ * A JSON response that states its charset. JSON is UTF-8 by definition, but
+ * Windows PowerShell 5.1 decodes a response without `charset` as ISO-8859-1,
+ * which turns every accented message into mojibake.
+ */
+export function apiJson(body: unknown, init: ResponseInit = {}) {
+  const response = NextResponse.json(body, init)
+  response.headers.set('Content-Type', 'application/json; charset=utf-8')
+  return response
+}
+
 /** JSON error with a stable machine-readable `error` code. */
 export function apiError(status: number, error: string, message?: string, headers?: HeadersInit) {
-  return NextResponse.json({ error, ...(message ? { message } : {}) }, { status, headers })
+  return apiJson({ error, ...(message ? { message } : {}) }, { status, headers })
 }
 
 const UNAUTHORIZED = {
